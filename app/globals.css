@@ -33,66 +33,13 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* ==== RainbowKit Modal Compatibility (force correct centering/positioning) ==== */
-
-/* 0) Ensure viewport ancestors are not transforming the coordinate system */
-html,
-body {
-  transform: none !important;
-  filter: none !important;
-  perspective: none !important;
-  min-height: 100%;
-  overflow: initial !important; /* allow the portal to sit on top */
-}
-
-/* If your layout uses a top-level wrapper, neutralize transforms there too */
-body > div,
-body > main,
-body > #__next,
-body > [data-app-root],
-body [data-page-root] {
-  transform: none !important;
-  filter: none !important;
-  perspective: none !important;
-}
-
-/* RainbowKit portal hardening (safe fallback) */
+/* Cleaned up RainbowKit overrides, keeping only minimal portal hardening */
+/* Portal hardening to ensure the modal appears on top */
 #rainbowkit-portal,
 [id^="rainbowkit-portal"] {
   position: fixed !important;
   inset: 0 !important;
   isolation: isolate;
   pointer-events: auto !important;
-  z-index: 2147483646 !important; /* just below max */
+  z-index: 2147483646 !important;
 }
-
-/* Make the overlay layer fill the viewport; center the modal safely */
-#rainbowkit-portal [data-rk] {
-  position: fixed !important;
-  inset: 0 !important;
-  display: grid !important;
-  place-items: center !important;
-}
-
-/* Guard against rogue container overflow rules */
-html,
-body {
-  overflow: initial !important; /* allow the portal to sit on top */
-}
-
-/* OPTIONAL: If you run a sticky header/footer with transforms, neutralize them */
-header,
-footer,
-[data-sticky],
-.sticky,
-.fixed {
-  filter: none !important;
-  perspective: none !important;
-}
-
-/* ==== RainbowKit Modal Compatibility for v0 canvas ==== */
-
-/* Neutralize transform/zoom traps on common page roots */
-/* If your layout uses an app root wrapper, clear transforms there too */
-/* Force the RainbowKit portal to be a full-screen fixed layer */
-/* Center the modal even if ancestors are transformed */
