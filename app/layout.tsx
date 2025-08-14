@@ -1,9 +1,10 @@
 import type React from "react"
 import type { Metadata } from "next"
 
+// Load RK CSS from a local copy (see step 3)
 import "./rainbowkit.css"
-
 import "./globals.css"
+
 import Providers from "./providers"
 
 export const metadata: Metadata = {

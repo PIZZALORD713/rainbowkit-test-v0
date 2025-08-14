@@ -18,14 +18,20 @@ const transports = {
   [polygon.id]: http(),
 } as const
 
-const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID
+const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "9ddc083da41f3648b5c2abcae265e0ce"
 
-// If projectId exists → full WalletConnect setup.
-// If missing → fall back to wallets that don't need WC, so the app keeps working.
-const config = projectId
+const hasValidProjectId = projectId && projectId.trim().length > 0
+
+if (typeof window !== "undefined") {
+  console.info(`[RainbowKit] Project ID: "${projectId}"`)
+  console.info(`[RainbowKit] Environment variable: "${process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID}"`)
+  console.info(`[RainbowKit] Has valid project ID: ${hasValidProjectId}`)
+}
+
+const config = hasValidProjectId
   ? getDefaultConfig({
       appName: "Sugar Depot",
-      projectId,
+      projectId: projectId!,
       chains,
       transports,
       ssr: true,
@@ -41,10 +47,6 @@ const config = projectId
         },
       ]),
     })
-
-if (typeof window !== "undefined") {
-  console.info(`[ENV] NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID is ${projectId ? "present" : "MISSING"} in this build.`)
-}
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
