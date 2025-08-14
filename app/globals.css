@@ -1,0 +1,199 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom scrollbar for better UX */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Ensure proper text rendering */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Base styles for better typography */
+body {
+  font-feature-settings: "rlig" 1, "calt" 1;
+  text-rendering: optimizeLegibility;
+}
+
+/* ==== RainbowKit Modal Compatibility (force correct centering/positioning) ==== */
+
+/* 0) Ensure viewport ancestors are not transforming the coordinate system */
+html,
+body {
+  transform: none !important;
+  filter: none !important;
+  perspective: none !important;
+  min-height: 100%;
+  overflow: initial !important; /* allow the portal to sit on top */
+}
+
+/* If your layout uses a top-level wrapper, neutralize transforms there too */
+body > div,
+body > main,
+body > #__next,
+body > [data-app-root],
+body [data-page-root] {
+  transform: none !important;
+  filter: none !important;
+  perspective: none !important;
+}
+
+/* Simplified RainbowKit modal styling following compact design best practices */
+/* RainbowKit Modal Backdrop - Clean and minimal */
+div[data-rk] {
+  backdrop-filter: blur(8px) !important;
+}
+
+div[data-rk] > div:first-child {
+  background: rgba(0, 0, 0, 0.4) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+/* Modal Content - Clean white background with subtle purple accents */
+div[data-rk] > div:last-child {
+  border-radius: 16px !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+  border: 1px solid rgba(168, 85, 247, 0.1) !important;
+  background: white !important;
+}
+
+/* Modal Header - Subtle purple gradient text */
+div[data-rk] h1 {
+  background: linear-gradient(135deg, #7c3aed, #a855f7) !important;
+  background-clip: text !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  font-weight: 600 !important;
+}
+
+/* Wallet Option Buttons - Clean with subtle purple hover */
+div[data-rk] button[data-testid] {
+  border-radius: 12px !important;
+  border: 1px solid rgba(229, 231, 235, 1) !important;
+  background: white !important;
+  transition: all 0.2s ease !important;
+  padding: 12px 16px !important;
+}
+
+div[data-rk] button[data-testid]:hover {
+  border-color: rgba(168, 85, 247, 0.3) !important;
+  background: rgba(168, 85, 247, 0.05) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.1) !important;
+}
+
+/* Wallet Icons - Clean rounded corners */
+div[data-rk] img {
+  border-radius: 8px !important;
+}
+
+/* Close Button - Minimal styling */
+div[data-rk] button[aria-label="Close"] {
+  background: rgba(243, 244, 246, 1) !important;
+  border-radius: 8px !important;
+  transition: all 0.2s ease !important;
+}
+
+div[data-rk] button[aria-label="Close"]:hover {
+  background: rgba(229, 231, 235, 1) !important;
+}
+
+/* Status badges - Purple accent for Recent/Popular labels */
+div[data-rk] [data-testid*="recent"],
+div[data-rk] [data-testid*="popular"] {
+  background: linear-gradient(135deg, #7c3aed, #a855f7) !important;
+  color: white !important;
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+  padding: 2px 8px !important;
+  border-radius: 6px !important;
+}
+
+/* Learn More link - Purple accent */
+div[data-rk] a {
+  color: #7c3aed !important;
+  font-weight: 500 !important;
+}
+
+div[data-rk] a:hover {
+  color: #6d28d9 !important;
+  text-decoration: underline !important;
+}
+
+/* Account Modal - Clean styling */
+div[data-rk] div[data-testid="rk-account-button"] {
+  background: white !important;
+  border: 1px solid rgba(229, 231, 235, 1) !important;
+  border-radius: 12px !important;
+}
+
+/* Copy Address Button - Subtle purple accent */
+div[data-rk] button[data-testid="rk-copy-button"] {
+  background: rgba(168, 85, 247, 0.05) !important;
+  border: 1px solid rgba(168, 85, 247, 0.2) !important;
+  border-radius: 8px !important;
+  transition: all 0.2s ease !important;
+}
+
+div[data-rk] button[data-testid="rk-copy-button"]:hover {
+  background: rgba(168, 85, 247, 0.1) !important;
+}
+
+/* RainbowKit portal hardening (safe fallback) */
+#rainbowkit-portal,
+[id^="rainbowkit-portal"] {
+  position: fixed !important;
+  inset: 0 !important;
+  isolation: isolate;
+  pointer-events: auto !important;
+  z-index: 2147483646 !important; /* just below max */
+}
+
+/* Make the overlay layer fill the viewport; center the modal safely */
+#rainbowkit-portal [data-rk] {
+  position: fixed !important;
+  inset: 0 !important;
+  display: grid !important;
+  place-items: center !important;
+}
+
+/* Guard against rogue container overflow rules */
+html,
+body {
+  overflow: initial !important; /* allow the portal to sit on top */
+}
+
+/* OPTIONAL: If you run a sticky header/footer with transforms, neutralize them */
+header,
+footer,
+[data-sticky],
+.sticky,
+.fixed {
+  filter: none !important;
+  perspective: none !important;
+}
+
+/* ==== RainbowKit Modal Compatibility for v0 canvas ==== */
+
+/* Neutralize transform/zoom traps on common page roots */
+/* If your layout uses an app root wrapper, clear transforms there too */
+/* Force the RainbowKit portal to be a full-screen fixed layer */
+/* Center the modal even if ancestors are transformed */

@@ -1,0 +1,239 @@
+/* RainbowKit CSS - Local Copy */
+/* Modal and overlay styles */
+[data-rk] {
+  --rk-fonts-body:
+    ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --rk-radii-actionButton: 9999px;
+  --rk-radii-connectButton: 12px;
+  --rk-radii-menuButton: 12px;
+  --rk-radii-modal: 24px;
+  --rk-radii-modalMobile: 28px;
+}
+
+[data-rk] * {
+  box-sizing: border-box;
+}
+
+[data-rk] button {
+  cursor: pointer;
+  font-family: var(--rk-fonts-body);
+}
+
+/* Modal backdrop */
+[data-rk] [role="dialog"] {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+}
+
+/* Modal container */
+[data-rk] [role="dialog"] > div {
+  position: relative;
+  background: white;
+  border-radius: var(--rk-radii-modal);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  max-width: 408px;
+  width: 100%;
+  max-height: calc(100vh - 32px);
+  overflow: hidden;
+}
+
+/* Dark theme */
+[data-rk][data-rk-theme="dark"] [role="dialog"] > div {
+  background: #1a1b23;
+  color: white;
+}
+
+/* Modal header */
+[data-rk] [data-testid="rk-modal-header"] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 24px 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+[data-rk][data-rk-theme="dark"] [data-testid="rk-modal-header"] {
+  border-bottom-color: #334155;
+}
+
+/* Modal title */
+[data-rk] [data-testid="rk-modal-title"] {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Close button */
+[data-rk] [data-testid="rk-modal-close-button"] {
+  background: none;
+  border: none;
+  padding: 8px;
+  border-radius: 8px;
+  color: #64748b;
+  transition: all 0.2s;
+}
+
+[data-rk] [data-testid="rk-modal-close-button"]:hover {
+  background: #f1f5f9;
+}
+
+[data-rk][data-rk-theme="dark"] [data-testid="rk-modal-close-button"]:hover {
+  background: #334155;
+}
+
+/* Modal body */
+[data-rk] [data-testid="rk-modal-body"] {
+  padding: 0 24px 24px;
+}
+
+/* Wallet options */
+[data-rk] [data-testid="rk-wallet-option"] {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 16px;
+  margin-bottom: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 500;
+  text-align: left;
+  transition: all 0.2s;
+}
+
+[data-rk] [data-testid="rk-wallet-option"]:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+[data-rk][data-rk-theme="dark"] [data-testid="rk-wallet-option"] {
+  background: #334155;
+  border-color: #475569;
+  color: white;
+}
+
+[data-rk][data-rk-theme="dark"] [data-testid="rk-wallet-option"]:hover {
+  background: #475569;
+  border-color: #64748b;
+}
+
+/* Wallet icon */
+[data-rk] [data-testid="rk-wallet-option"] img {
+  width: 28px;
+  height: 28px;
+  margin-right: 12px;
+  border-radius: 6px;
+}
+
+/* Connect button */
+[data-rk] [data-testid="rk-connect-button"] {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: var(--rk-radii-connectButton);
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+[data-rk] [data-testid="rk-connect-button"]:hover {
+  background: #2563eb;
+}
+
+/* Account button */
+[data-rk] [data-testid="rk-account-button"] {
+  display: flex;
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--rk-radii-connectButton);
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+[data-rk] [data-testid="rk-account-button"]:hover {
+  background: #f1f5f9;
+}
+
+[data-rk][data-rk-theme="dark"] [data-testid="rk-account-button"] {
+  background: #334155;
+  border-color: #475569;
+  color: white;
+}
+
+/* Avatar */
+[data-rk] [data-testid="rk-account-button"] img {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+/* Loading spinner */
+[data-rk] [data-testid="rk-loading-spinner"] {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #e2e8f0;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: rk-spin 1s linear infinite;
+}
+
+@keyframes rk-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  [data-rk] [role="dialog"] {
+    padding: 16px;
+    align-items: flex-end;
+  }
+
+  [data-rk] [role="dialog"] > div {
+    border-radius: var(--rk-radii-modalMobile) var(--rk-radii-modalMobile) 0 0;
+    max-height: 90vh;
+  }
+}
+
+/* Animation */
+[data-rk] [role="dialog"] {
+  animation: rk-fade-in 0.2s ease-out;
+}
+
+[data-rk] [role="dialog"] > div {
+  animation: rk-scale-in 0.2s ease-out;
+}
+
+@keyframes rk-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes rk-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
