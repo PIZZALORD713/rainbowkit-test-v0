@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Search, Wallet, ExternalLink, Sparkles, User, FileText, Eye, Settings } from "lucide-react"
 import { CMPEditor } from "@/components/cmp-editor"
 import { CMPStorage } from "@/lib/cmp-storage"
+import BulkEditModal from "@/components/bulk-edit-modal"
 import Link from "next/link"
 
 interface Ora {
@@ -48,6 +49,9 @@ export default function SugartownOraDashboard() {
   const [searchedWallet, setSearchedWallet] = useState("")
   const [selectedOra, setSelectedOra] = useState<Ora | null>(null)
   const [showCMPEditor, setShowCMPEditor] = useState(false)
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedOras, setSelectedOras] = useState<Ora[]>([])
+  const [showBulkModal, setShowBulkModal] = useState(false)
 
   const handleSearch = async (walletToSearch?: string) => {
     const targetWallet = walletToSearch || searchQuery.trim()
@@ -144,6 +148,16 @@ export default function SugartownOraDashboard() {
                   </Button>
                 </Link>
               )}
+              <Button
+                variant="outline"
+                className="flex items-center gap-2 bg-transparent"
+                onClick={() => {
+                  setSelectionMode((prev) => !prev)
+                  setSelectedOras([])
+                }}
+              >
+                {selectionMode ? "Exit Bulk Edit" : "Bulk Edit CMP"}
+              </Button>
               <CustomConnectButton />
             </div>
           </div>
@@ -252,13 +266,60 @@ export default function SugartownOraDashboard() {
               </div>
             </div>
 
-            {/* NFT Grid */}
+            {selectionMode && (
+              <div className="flex flex-wrap items-center justify-between mb-4 gap-2">
+                <span className="text-sm text-slate-600">
+                  {selectedOras.length} of {oras.length} selected
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setSelectedOras(oras)}>
+                    Select All
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setSelectedOras([])}>
+                    Clear
+                  </Button>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => setShowBulkModal(true)}
+                    disabled={!selectedOras.length}
+                  >
+                    Export Selected ({selectedOras.length})
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectionMode(false)
+                      setSelectedOras([])
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {oras.map((ora) => (
                 <Card
                   key={ora.oraNumber}
                   className="group overflow-hidden hover:shadow-xl transition-all duration-300 border-slate-200/50 bg-white/60 backdrop-blur-sm hover:bg-white/80"
                 >
+                  {selectionMode && (
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${ora.name}`}
+                      checked={selectedOras.some((o) => o.oraNumber === ora.oraNumber)}
+                      onChange={(e) => {
+                        const checked = e.target.checked
+                        setSelectedOras((prev) =>
+                          checked ? [...prev, ora] : prev.filter((o) => o.oraNumber !== ora.oraNumber),
+                        )
+                      }}
+                      className="absolute top-2 left-2 z-20 w-4 h-4 text-indigo-600 bg-white border-gray-300 rounded focus:ring-indigo-500"
+                    />
+                  )}
                   <div className="aspect-square relative overflow-hidden">
                     <img
                       src={ora.image || "/placeholder.svg?height=400&width=400&text=Ora"}
@@ -302,7 +363,9 @@ export default function SugartownOraDashboard() {
                       </div>
                     )}
 
-                    <div className="flex items-center justify-between pt-2 gap-2">
+                    <div
+                      className={`flex items-center justify-between pt-2 gap-2 ${selectionMode ? "opacity-50 pointer-events-none" : ""}`}
+                    >
                       <Button
                         variant="outline"
                         size="sm"
@@ -409,6 +472,15 @@ export default function SugartownOraDashboard() {
           onSave={() => {
             console.log("CMP file saved successfully")
           }}
+        />
+      )}
+
+      {/* Bulk Edit Modal */}
+      {showBulkModal && (
+        <BulkEditModal
+          selectedOras={selectedOras}
+          collectionName={searchedWallet || "Sugartown Collection"}
+          onClose={() => setShowBulkModal(false)}
         />
       )}
     </div>
