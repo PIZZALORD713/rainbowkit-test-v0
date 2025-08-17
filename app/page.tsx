@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { useAccount, useEnsName } from "wagmi"
 import CustomConnectButton from "@/components/custom-connect-button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -52,6 +52,7 @@ export default function SugartownOraDashboard() {
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedOras, setSelectedOras] = useState<Ora[]>([])
   const [showBulkModal, setShowBulkModal] = useState(false)
+  const [aimRefreshTrigger, setAimRefreshTrigger] = useState(0)
 
   const handleSearch = async (walletToSearch?: string) => {
     const targetWallet = walletToSearch || searchQuery.trim()
@@ -118,11 +119,27 @@ export default function SugartownOraDashboard() {
     return colors[traitType as keyof typeof colors] || "bg-gray-100 text-gray-800"
   }
 
-  const hasAIMFile = (oraNumber: string) => {
-    return AIMStorage.getByOraNumber(oraNumber) !== null
-  }
+  const getDisplayName = useCallback(
+    (ora: Ora) => {
+      const aimFile = AIMStorage.getByOraNumber(ora.oraNumber)
+      return aimFile?.characterName || ora.name
+    },
+    [aimRefreshTrigger],
+  )
 
-  const aimFileCount = AIMStorage.getAll().length
+  const hasAIMFile = useCallback(
+    (oraNumber: string) => {
+      return AIMStorage.getByOraNumber(oraNumber) !== null
+    },
+    [aimRefreshTrigger],
+  )
+
+  const aimFileCount = AIMStorage.getAll().length + aimRefreshTrigger * 0 // Trigger recalculation
+
+  const handleAIMSave = useCallback(() => {
+    console.log("AIM file saved successfully")
+    setAimRefreshTrigger((prev) => prev + 1) // Trigger re-render to show updated names
+  }, [])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -379,7 +396,7 @@ export default function SugartownOraDashboard() {
 
                   <CardHeader className="pb-4 pt-6">
                     <CardTitle className="text-xl font-bold text-slate-900 group-hover:text-indigo-600 transition-colors duration-300 leading-tight">
-                      {ora.name}
+                      {getDisplayName(ora)}
                     </CardTitle>
                   </CardHeader>
 
@@ -515,9 +532,7 @@ export default function SugartownOraDashboard() {
           oraName={selectedOra.name}
           oraImage={selectedOra.image}
           onClose={handleCloseAIMEditor}
-          onSave={() => {
-            console.log("AIM file saved successfully")
-          }}
+          onSave={handleAIMSave}
         />
       )}
 
