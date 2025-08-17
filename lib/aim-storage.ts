@@ -74,4 +74,23 @@ export class AIMStorage {
       throw new Error("Failed to parse AIM file")
     }
   }
+
+  static importFile(file: AIMFile): { success: boolean; message: string } {
+    if (!file?.oraNumber || !file?.characterName) {
+      return { success: false, message: "Invalid AIM file." }
+    }
+
+    try {
+      // Update timestamps and ensure proper structure
+      file.updatedAt = new Date().toISOString()
+      if (!file.createdAt) {
+        file.createdAt = new Date().toISOString()
+      }
+
+      this.save(file)
+      return { success: true, message: "AIM imported successfully." }
+    } catch {
+      return { success: false, message: "Failed to import." }
+    }
+  }
 }
