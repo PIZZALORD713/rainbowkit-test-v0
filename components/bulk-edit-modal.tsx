@@ -36,24 +36,66 @@ export default function BulkEditModal({ selectedOras, collectionName, onClose }:
       collection: collectionName,
       exportDate: new Date().toISOString(),
       totalCharacters: selectedOras.length,
-      instructions: {
-        purpose: "AI-powered profile generation",
-        requirements: ["analyze visual traits", "generate unique lore", "assign personality and behavioural traits"],
-        profileAttributes: {
-          archetype: "Character class/role",
-          alignment: "Moral compass",
-          tone: "Communication style",
-          tagline: "Short memorable phrase",
-          lore: "Character backstory",
-          catchphrase: "Signature saying",
-        },
-      },
+      format: "standardized-cmp",
+      version: 3,
       characters: selectedOras.map((ora) => ({
-        tokenId: ora.oraNumber,
-        currentName: ora.name,
-        imageUrl: ora.image,
+        id: `cmp-${ora.oraNumber}-${Date.now()}`,
+        oraNumber: ora.oraNumber,
+        oraName: ora.name,
+        oraImage: ora.image,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        characterName: ora.name,
+        personality: {
+          primaryTraits: [],
+          secondaryTraits: [],
+          alignment: "True Neutral",
+          temperament: "",
+          motivations: [],
+          fears: [],
+          quirks: [],
+        },
+        backstory: {
+          origin: "",
+          childhood: "",
+          formativeEvents: [],
+          relationships: [],
+          achievements: [],
+          failures: [],
+        },
+        abilities: {
+          strengths: [],
+          weaknesses: [],
+          specialPowers: [],
+          skills: [],
+        },
+        behavior: {
+          speechPatterns: "",
+          mannerisms: [],
+          habits: [],
+          socialStyle: "Ambivert",
+          conflictResolution: "",
+          decisionMaking: "",
+        },
+        appearance: {
+          distinctiveFeatures: [],
+          clothing: "",
+          accessories: [],
+        },
+        goals: {
+          shortTerm: [],
+          longTerm: [],
+          dreams: [],
+          currentQuest: "",
+        },
+        tags: [],
+        notes: "",
+        version: 3,
+        nickname: "",
+        age: undefined,
+        species: "",
+        // Include original visual traits for reference
         visualTraits: normalizeTraits(ora.traits),
-        profileToGenerate: {},
       })),
     }
   }, [selectedOras, collectionName])
@@ -97,8 +139,8 @@ export default function BulkEditModal({ selectedOras, collectionName, onClose }:
         {/* Instructions & Preview */}
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            Use this tool to generate AI-powered character profiles for your selected NFTs. The exported JSON includes
-            instructions and fields for AI tools.
+            Export your selected NFTs as standardized CMP files. This format includes all character modeling fields and
+            can be imported back into the system or used with other CMP-compatible tools.
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             {selectedOras.map((ora) => (
