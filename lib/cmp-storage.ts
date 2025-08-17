@@ -28,7 +28,8 @@ export class CMPStorage {
       const existingIndex = files.findIndex((file) => file.id === cmpFile.id)
 
       cmpFile.updatedAt = new Date().toISOString()
-      cmpFile.version += 1
+      const currentVersion = Number.parseInt(cmpFile.version || "0", 10)
+      cmpFile.version = (currentVersion + 1).toString()
 
       if (existingIndex >= 0) {
         files[existingIndex] = cmpFile

@@ -135,8 +135,8 @@ export default function SugartownOraDashboard() {
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">Sugartown Ora Dashboard</h1>
-                <p className="text-sm text-slate-600">Character Modeling Protocol</p>
+                <h1 className="text-2xl font-bold text-slate-900">OraKit</h1>
+                <p className="text-sm text-slate-600">Avatar Identity Model</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -172,8 +172,7 @@ export default function SugartownOraDashboard() {
             Discover Your Ora Collection
           </h2>
           <p className="text-xl text-slate-600 mb-8 max-w-3xl mx-auto leading-relaxed">
-            Explore your unique Sugartown Ora NFTs and create detailed character spec sheets with our advanced Character
-            Modeling Protocol (CMP)
+            Explore your unique Sugartown Ora NFTs and create detailed character spec sheets, use them for AI prompts or character integrations                 
           </p>
 
           {/* Search Section */}
@@ -418,10 +417,9 @@ export default function SugartownOraDashboard() {
         {/* CMP Info Section */}
         <div className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg p-8 border border-slate-200/50">
           <div className="text-center mb-8">
-            <h3 className="text-3xl font-bold text-slate-900 mb-4">Character Modeling Protocol (CMP)</h3>
+            <h3 className="text-3xl font-bold text-slate-900 mb-4">Avatar Identity Matrix (AIM)   </h3>
             <p className="text-slate-600 text-lg max-w-3xl mx-auto leading-relaxed">
-              Transform your Ora NFTs into rich, interactive characters with detailed personality profiles, backstories,
-              and behavioral traits using our advanced CMP system.
+              Transform your Ora NFTs into rich, interactive characters with detailed personality profiles, backstories, and behavioral traits using our avatar identity editor.
             </p>
           </div>
 
@@ -430,7 +428,7 @@ export default function SugartownOraDashboard() {
               <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
                 <User className="w-8 h-8 text-white" />
               </div>
-              <h4 className="font-bold text-slate-900 mb-3 text-lg">Personality Matrix</h4>
+              <h4 className="font-bold text-slate-900 mb-3 text-lg">AIM</h4>
               <p className="text-slate-600 leading-relaxed">
                 Define core personality traits, behavioral patterns, and psychological profiles that make each Ora
                 unique and memorable.
