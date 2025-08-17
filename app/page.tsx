@@ -142,7 +142,10 @@ export default function SugartownOraDashboard() {
             <div className="flex items-center gap-3">
               {aimFileCount > 0 && (
                 <Link href="/manage">
-                  <Button variant="outline" className="flex items-center gap-2 bg-transparent">
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2 bg-white/80 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 border-slate-300 hover:border-indigo-400 text-slate-700 hover:text-indigo-700 font-medium shadow-sm hover:shadow-md transition-all duration-300 transform hover:scale-[1.02]"
+                  >
                     <Settings className="w-4 h-4" />
                     Manage AIM Files ({aimFileCount})
                   </Button>
@@ -150,7 +153,7 @@ export default function SugartownOraDashboard() {
               )}
               <Button
                 variant="outline"
-                className="flex items-center gap-2 bg-transparent"
+                className="flex items-center gap-2 bg-white/80 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 border-slate-300 hover:border-purple-400 text-slate-700 hover:text-purple-700 font-medium shadow-sm hover:shadow-md transition-all duration-300 transform hover:scale-[1.02]"
                 onClick={() => {
                   setSelectionMode((prev) => !prev)
                   setSelectedOras([])
@@ -210,9 +213,16 @@ export default function SugartownOraDashboard() {
                   <Button
                     onClick={() => handleSearch()}
                     disabled={loading}
-                    className="h-14 px-8 text-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                    className="h-14 px-8 text-lg font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] disabled:transform-none disabled:hover:scale-100"
                   >
-                    {loading ? "Searching..." : "Search"}
+                    {loading ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Searching...
+                      </div>
+                    ) : (
+                      "Search"
+                    )}
                   </Button>
                 </div>
               </TabsContent>
@@ -235,9 +245,16 @@ export default function SugartownOraDashboard() {
                       <Button
                         onClick={handleSearchConnectedWallet}
                         disabled={loading}
-                        className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                        className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] disabled:transform-none disabled:hover:scale-100"
                       >
-                        {loading ? "Loading..." : "Load My Oras"}
+                        {loading ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Loading...
+                          </div>
+                        ) : (
+                          "Load My Oras"
+                        )}
                       </Button>
                     </div>
                   </div>
@@ -276,10 +293,20 @@ export default function SugartownOraDashboard() {
                   {selectedOras.length} of {oras.length} selected
                 </span>
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setSelectedOras(oras)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedOras(oras)}
+                    className="bg-white/80 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 border-slate-300 hover:border-blue-400 text-slate-700 hover:text-blue-700 font-medium shadow-sm hover:shadow-md transition-all duration-200"
+                  >
                     Select All
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => setSelectedOras([])}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedOras([])}
+                    className="bg-white/80 hover:bg-slate-50 border-slate-300 hover:border-slate-400 text-slate-700 hover:text-slate-900 font-medium shadow-sm hover:shadow-md transition-all duration-200"
+                  >
                     Clear
                   </Button>
                   <Button
@@ -287,6 +314,7 @@ export default function SugartownOraDashboard() {
                     size="sm"
                     onClick={() => setShowBulkModal(true)}
                     disabled={!selectedOras.length}
+                    className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 font-semibold shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Export Selected ({selectedOras.length})
                   </Button>
@@ -297,6 +325,7 @@ export default function SugartownOraDashboard() {
                       setSelectionMode(false)
                       setSelectedOras([])
                     }}
+                    className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium transition-all duration-200"
                   >
                     Cancel
                   </Button>
