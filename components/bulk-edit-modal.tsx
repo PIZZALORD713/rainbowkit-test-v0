@@ -71,7 +71,7 @@ export default function BulkEditModal({ selectedOras, collectionName, onClose }:
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.href = url
-    link.download = "bulk_cmp_export.json"
+    link.download = "bulk_aim_export.json"
     link.click()
     URL.revokeObjectURL(url)
   }
@@ -82,7 +82,7 @@ export default function BulkEditModal({ selectedOras, collectionName, onClose }:
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
           <h2 className="flex items-center gap-2 text-lg font-semibold">
-            Bulk CMP Export
+            Bulk AIM Export
             <Badge variant="secondary">{selectedOras.length}</Badge>
           </h2>
           <button

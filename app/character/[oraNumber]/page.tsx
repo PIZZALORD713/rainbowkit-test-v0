@@ -2,29 +2,29 @@
 
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
-import type { CMPFile } from "@/types/cmp"
-import { CMPStorage } from "@/lib/cmp-storage"
+import type { AIMFile } from "@/types/aim"
+import { AIMStorage } from "@/lib/aim-storage"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import { ArrowLeft, Edit, Download, Star, User, Heart, Zap, Target, Brain, BookOpen, Sparkles } from "lucide-react"
-import { CMPEditor } from "@/components/cmp-editor"
+import { AIMEditor } from "@/components/aim-editor"
 
 export default function CharacterDetailPage() {
   const params = useParams()
   const router = useRouter()
   const oraNumber = params.oraNumber as string
 
-  const [cmpFile, setCmpFile] = useState<CMPFile | null>(null)
+  const [aimFile, setAimFile] = useState<AIMFile | null>(null)
   const [showEditor, setShowEditor] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (oraNumber) {
-      const file = CMPStorage.getByOraNumber(oraNumber)
-      setCmpFile(file)
+      const file = AIMStorage.getByOraNumber(oraNumber)
+      setAimFile(file)
       setLoading(false)
     }
   }, [oraNumber])
@@ -35,21 +35,20 @@ export default function CharacterDetailPage() {
 
   const handleCloseEditor = () => {
     setShowEditor(false)
-    // Refresh the CMP file data
-    const updatedFile = CMPStorage.getByOraNumber(oraNumber)
-    setCmpFile(updatedFile)
+    const updatedFile = AIMStorage.getByOraNumber(oraNumber)
+    setAimFile(updatedFile)
   }
 
   const handleExport = () => {
-    if (!cmpFile) return
+    if (!aimFile) return
 
     try {
-      const jsonString = CMPStorage.export(cmpFile.id)
+      const jsonString = AIMStorage.export(aimFile.id)
       const blob = new Blob([jsonString], { type: "application/json" })
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `${cmpFile.characterName}-CMP.json`
+      a.download = `${aimFile.characterName}-AIM.json`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -74,50 +73,50 @@ export default function CharacterDetailPage() {
     return colors[alignment as keyof typeof colors] || "bg-gray-100 text-gray-800"
   }
 
-  const getCompletionPercentage = (cmpFile: CMPFile) => {
+  const getCompletionPercentage = (aimFile: AIMFile) => {
     let totalFields = 0
     let filledFields = 0
 
     // Core identity
     totalFields += 4
-    if (cmpFile.characterName) filledFields++
-    if (cmpFile.nickname) filledFields++
-    if (cmpFile.age) filledFields++
-    if (cmpFile.species) filledFields++
+    if (aimFile.characterName) filledFields++
+    if (aimFile.nickname) filledFields++
+    if (aimFile.age) filledFields++
+    if (aimFile.species) filledFields++
 
     // Personality
     totalFields += 6
-    if (cmpFile.personality.primaryTraits.length > 0) filledFields++
-    if (cmpFile.personality.secondaryTraits.length > 0) filledFields++
-    if (cmpFile.personality.temperament) filledFields++
-    if (cmpFile.personality.motivations.length > 0) filledFields++
-    if (cmpFile.personality.fears.length > 0) filledFields++
-    if (cmpFile.personality.quirks.length > 0) filledFields++
+    if (aimFile.personality.primaryTraits.length > 0) filledFields++
+    if (aimFile.personality.secondaryTraits.length > 0) filledFields++
+    if (aimFile.personality.temperament) filledFields++
+    if (aimFile.personality.motivations.length > 0) filledFields++
+    if (aimFile.personality.fears.length > 0) filledFields++
+    if (aimFile.personality.quirks.length > 0) filledFields++
 
     // Backstory
     totalFields += 4
-    if (cmpFile.backstory.origin) filledFields++
-    if (cmpFile.backstory.childhood) filledFields++
-    if (cmpFile.backstory.formativeEvents.length > 0) filledFields++
-    if (cmpFile.backstory.achievements.length > 0) filledFields++
+    if (aimFile.backstory.origin) filledFields++
+    if (aimFile.backstory.childhood) filledFields++
+    if (aimFile.backstory.formativeEvents.length > 0) filledFields++
+    if (aimFile.backstory.achievements.length > 0) filledFields++
 
     // Abilities
     totalFields += 3
-    if (cmpFile.abilities.strengths.length > 0) filledFields++
-    if (cmpFile.abilities.weaknesses.length > 0) filledFields++
-    if (cmpFile.abilities.specialPowers.length > 0) filledFields++
+    if (aimFile.abilities.strengths.length > 0) filledFields++
+    if (aimFile.abilities.weaknesses.length > 0) filledFields++
+    if (aimFile.abilities.specialPowers.length > 0) filledFields++
 
     // Behavior
     totalFields += 3
-    if (cmpFile.behavior.speechPatterns) filledFields++
-    if (cmpFile.behavior.mannerisms.length > 0) filledFields++
-    if (cmpFile.behavior.habits.length > 0) filledFields++
+    if (aimFile.behavior.speechPatterns) filledFields++
+    if (aimFile.behavior.mannerisms.length > 0) filledFields++
+    if (aimFile.behavior.habits.length > 0) filledFields++
 
     // Goals
     totalFields += 3
-    if (cmpFile.goals.shortTerm.length > 0) filledFields++
-    if (cmpFile.goals.longTerm.length > 0) filledFields++
-    if (cmpFile.goals.dreams.length > 0) filledFields++
+    if (aimFile.goals.shortTerm.length > 0) filledFields++
+    if (aimFile.goals.longTerm.length > 0) filledFields++
+    if (aimFile.goals.dreams.length > 0) filledFields++
 
     return Math.round((filledFields / totalFields) * 100)
   }
@@ -133,7 +132,7 @@ export default function CharacterDetailPage() {
     )
   }
 
-  if (!cmpFile) {
+  if (!aimFile) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
         <div className="max-w-4xl mx-auto px-4 py-8">
@@ -148,7 +147,7 @@ export default function CharacterDetailPage() {
             </div>
             <h2 className="text-2xl font-bold text-slate-900 mb-4">No Character Profile Found</h2>
             <p className="text-slate-600 mb-6">
-              This Ora doesn't have a CMP file yet. Create one to build a detailed character profile.
+              This Ora doesn't have an AIM file yet. Create one to build a detailed character profile.
             </p>
             <Button onClick={() => router.back()}>Return to Dashboard</Button>
           </div>
@@ -157,7 +156,7 @@ export default function CharacterDetailPage() {
     )
   }
 
-  const completionPercentage = getCompletionPercentage(cmpFile)
+  const completionPercentage = getCompletionPercentage(aimFile)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -172,13 +171,13 @@ export default function CharacterDetailPage() {
               </Button>
               <div className="flex items-center gap-3">
                 <img
-                  src={cmpFile.oraImage || "/placeholder.svg"}
-                  alt={cmpFile.characterName}
+                  src={aimFile.oraImage || "/placeholder.svg"}
+                  alt={aimFile.characterName}
                   className="w-12 h-12 rounded-lg object-cover"
                 />
                 <div>
-                  <h1 className="text-2xl font-bold text-slate-900">{cmpFile.characterName}</h1>
-                  <p className="text-slate-600">Ora #{cmpFile.oraNumber}</p>
+                  <h1 className="text-2xl font-bold text-slate-900">{aimFile.characterName}</h1>
+                  <p className="text-slate-600">Ora #{aimFile.oraNumber}</p>
                 </div>
               </div>
             </div>
@@ -190,7 +189,7 @@ export default function CharacterDetailPage() {
               </Button>
               <Button onClick={handleEdit}>
                 <Edit className="w-4 h-4 mr-2" />
-                Edit
+                Edit AIM
               </Button>
             </div>
           </div>
@@ -206,33 +205,33 @@ export default function CharacterDetailPage() {
               <CardContent className="p-6">
                 <div className="text-center mb-6">
                   <img
-                    src={cmpFile.oraImage || "/placeholder.svg"}
-                    alt={cmpFile.characterName}
+                    src={aimFile.oraImage || "/placeholder.svg"}
+                    alt={aimFile.characterName}
                     className="w-48 h-48 rounded-2xl object-cover mx-auto mb-4 shadow-lg"
                   />
-                  <h2 className="text-2xl font-bold text-slate-900 mb-2">{cmpFile.characterName}</h2>
-                  {cmpFile.nickname && <p className="text-slate-600 mb-2">"{cmpFile.nickname}"</p>}
-                  <Badge className={getAlignmentColor(cmpFile.personality.alignment)}>
-                    {cmpFile.personality.alignment}
+                  <h2 className="text-2xl font-bold text-slate-900 mb-2">{aimFile.characterName}</h2>
+                  {aimFile.nickname && <p className="text-slate-600 mb-2">"{aimFile.nickname}"</p>}
+                  <Badge className={getAlignmentColor(aimFile.personality.alignment)}>
+                    {aimFile.personality.alignment}
                   </Badge>
                 </div>
 
                 <div className="space-y-4">
-                  {cmpFile.age && (
+                  {aimFile.age && (
                     <div className="flex justify-between">
                       <span className="text-slate-600">Age:</span>
-                      <span className="font-medium">{cmpFile.age}</span>
+                      <span className="font-medium">{aimFile.age}</span>
                     </div>
                   )}
-                  {cmpFile.species && (
+                  {aimFile.species && (
                     <div className="flex justify-between">
                       <span className="text-slate-600">Species:</span>
-                      <span className="font-medium">{cmpFile.species}</span>
+                      <span className="font-medium">{aimFile.species}</span>
                     </div>
                   )}
                   <div className="flex justify-between">
                     <span className="text-slate-600">Social Style:</span>
-                    <span className="font-medium">{cmpFile.behavior.socialStyle}</span>
+                    <span className="font-medium">{aimFile.behavior.socialStyle}</span>
                   </div>
 
                   <div className="pt-4 border-t">
@@ -244,11 +243,11 @@ export default function CharacterDetailPage() {
                   </div>
                 </div>
 
-                {cmpFile.tags.length > 0 && (
+                {aimFile.tags.length > 0 && (
                   <div className="mt-6 pt-6 border-t">
                     <p className="text-sm font-medium text-slate-700 mb-2">Tags</p>
                     <div className="flex flex-wrap gap-1">
-                      {cmpFile.tags.map((tag, index) => (
+                      {aimFile.tags.map((tag, index) => (
                         <Badge key={index} variant="secondary" className="text-xs">
                           {tag}
                         </Badge>
@@ -295,18 +294,18 @@ export default function CharacterDetailPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {cmpFile.personality.temperament && (
+                    {aimFile.personality.temperament && (
                       <div>
                         <h4 className="font-semibold text-slate-900 mb-2">Temperament</h4>
-                        <p className="text-slate-700">{cmpFile.personality.temperament}</p>
+                        <p className="text-slate-700">{aimFile.personality.temperament}</p>
                       </div>
                     )}
 
-                    {cmpFile.personality.primaryTraits.length > 0 && (
+                    {aimFile.personality.primaryTraits.length > 0 && (
                       <div>
                         <h4 className="font-semibold text-slate-900 mb-2">Primary Traits</h4>
                         <div className="flex flex-wrap gap-2">
-                          {cmpFile.personality.primaryTraits.map((trait, index) => (
+                          {aimFile.personality.primaryTraits.map((trait, index) => (
                             <Badge key={index} className="bg-indigo-100 text-indigo-800">
                               {trait}
                             </Badge>
@@ -315,11 +314,11 @@ export default function CharacterDetailPage() {
                       </div>
                     )}
 
-                    {cmpFile.personality.secondaryTraits.length > 0 && (
+                    {aimFile.personality.secondaryTraits.length > 0 && (
                       <div>
                         <h4 className="font-semibold text-slate-900 mb-2">Secondary Traits</h4>
                         <div className="flex flex-wrap gap-2">
-                          {cmpFile.personality.secondaryTraits.map((trait, index) => (
+                          {aimFile.personality.secondaryTraits.map((trait, index) => (
                             <Badge key={index} className="bg-purple-100 text-purple-800">
                               {trait}
                             </Badge>
@@ -329,14 +328,14 @@ export default function CharacterDetailPage() {
                     )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {cmpFile.personality.motivations.length > 0 && (
+                      {aimFile.personality.motivations.length > 0 && (
                         <div>
                           <h4 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
                             <Heart className="w-4 h-4 text-red-500" />
                             Motivations
                           </h4>
                           <ul className="space-y-1">
-                            {cmpFile.personality.motivations.map((motivation, index) => (
+                            {aimFile.personality.motivations.map((motivation, index) => (
                               <li key={index} className="text-slate-700 text-sm">
                                 • {motivation}
                               </li>
@@ -345,11 +344,11 @@ export default function CharacterDetailPage() {
                         </div>
                       )}
 
-                      {cmpFile.personality.fears.length > 0 && (
+                      {aimFile.personality.fears.length > 0 && (
                         <div>
                           <h4 className="font-semibold text-slate-900 mb-2">Fears</h4>
                           <ul className="space-y-1">
-                            {cmpFile.personality.fears.map((fear, index) => (
+                            {aimFile.personality.fears.map((fear, index) => (
                               <li key={index} className="text-slate-700 text-sm">
                                 • {fear}
                               </li>
@@ -359,14 +358,14 @@ export default function CharacterDetailPage() {
                       )}
                     </div>
 
-                    {cmpFile.personality.quirks.length > 0 && (
+                    {aimFile.personality.quirks.length > 0 && (
                       <div>
                         <h4 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
                           <Sparkles className="w-4 h-4 text-yellow-500" />
                           Quirks & Habits
                         </h4>
                         <div className="flex flex-wrap gap-2">
-                          {cmpFile.personality.quirks.map((quirk, index) => (
+                          {aimFile.personality.quirks.map((quirk, index) => (
                             <Badge key={index} variant="outline" className="text-sm">
                               {quirk}
                             </Badge>
@@ -387,26 +386,26 @@ export default function CharacterDetailPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {cmpFile.backstory.origin && (
+                    {aimFile.backstory.origin && (
                       <div>
                         <h4 className="font-semibold text-slate-900 mb-2">Origin Story</h4>
-                        <p className="text-slate-700 leading-relaxed">{cmpFile.backstory.origin}</p>
+                        <p className="text-slate-700 leading-relaxed">{aimFile.backstory.origin}</p>
                       </div>
                     )}
 
-                    {cmpFile.backstory.childhood && (
+                    {aimFile.backstory.childhood && (
                       <div>
                         <h4 className="font-semibold text-slate-900 mb-2">Childhood & Early Life</h4>
-                        <p className="text-slate-700 leading-relaxed">{cmpFile.backstory.childhood}</p>
+                        <p className="text-slate-700 leading-relaxed">{aimFile.backstory.childhood}</p>
                       </div>
                     )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {cmpFile.backstory.formativeEvents.length > 0 && (
+                      {aimFile.backstory.formativeEvents.length > 0 && (
                         <div>
                           <h4 className="font-semibold text-slate-900 mb-2">Formative Events</h4>
                           <ul className="space-y-1">
-                            {cmpFile.backstory.formativeEvents.map((event, index) => (
+                            {aimFile.backstory.formativeEvents.map((event, index) => (
                               <li key={index} className="text-slate-700 text-sm">
                                 • {event}
                               </li>
@@ -415,14 +414,14 @@ export default function CharacterDetailPage() {
                         </div>
                       )}
 
-                      {cmpFile.backstory.achievements.length > 0 && (
+                      {aimFile.backstory.achievements.length > 0 && (
                         <div>
                           <h4 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
                             <Star className="w-4 h-4 text-yellow-500" />
                             Achievements
                           </h4>
                           <ul className="space-y-1">
-                            {cmpFile.backstory.achievements.map((achievement, index) => (
+                            {aimFile.backstory.achievements.map((achievement, index) => (
                               <li key={index} className="text-slate-700 text-sm">
                                 • {achievement}
                               </li>
@@ -432,11 +431,11 @@ export default function CharacterDetailPage() {
                       )}
                     </div>
 
-                    {cmpFile.backstory.failures.length > 0 && (
+                    {aimFile.backstory.failures.length > 0 && (
                       <div>
                         <h4 className="font-semibold text-slate-900 mb-2">Failures & Setbacks</h4>
                         <ul className="space-y-1">
-                          {cmpFile.backstory.failures.map((failure, index) => (
+                          {aimFile.backstory.failures.map((failure, index) => (
                             <li key={index} className="text-slate-700 text-sm">
                               • {failure}
                             </li>
@@ -458,11 +457,11 @@ export default function CharacterDetailPage() {
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {cmpFile.abilities.strengths.length > 0 && (
+                      {aimFile.abilities.strengths.length > 0 && (
                         <div>
                           <h4 className="font-semibold text-slate-900 mb-2 text-green-700">Strengths</h4>
                           <ul className="space-y-1">
-                            {cmpFile.abilities.strengths.map((strength, index) => (
+                            {aimFile.abilities.strengths.map((strength, index) => (
                               <li key={index} className="text-slate-700 text-sm">
                                 • {strength}
                               </li>
@@ -471,11 +470,11 @@ export default function CharacterDetailPage() {
                         </div>
                       )}
 
-                      {cmpFile.abilities.weaknesses.length > 0 && (
+                      {aimFile.abilities.weaknesses.length > 0 && (
                         <div>
                           <h4 className="font-semibold text-slate-900 mb-2 text-red-700">Weaknesses</h4>
                           <ul className="space-y-1">
-                            {cmpFile.abilities.weaknesses.map((weakness, index) => (
+                            {aimFile.abilities.weaknesses.map((weakness, index) => (
                               <li key={index} className="text-slate-700 text-sm">
                                 • {weakness}
                               </li>
@@ -485,14 +484,14 @@ export default function CharacterDetailPage() {
                       )}
                     </div>
 
-                    {cmpFile.abilities.specialPowers.length > 0 && (
+                    {aimFile.abilities.specialPowers.length > 0 && (
                       <div>
                         <h4 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
                           <Sparkles className="w-4 h-4 text-purple-500" />
                           Special Powers
                         </h4>
                         <div className="flex flex-wrap gap-2">
-                          {cmpFile.abilities.specialPowers.map((power, index) => (
+                          {aimFile.abilities.specialPowers.map((power, index) => (
                             <Badge key={index} className="bg-purple-100 text-purple-800">
                               {power}
                             </Badge>
@@ -513,19 +512,19 @@ export default function CharacterDetailPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {cmpFile.behavior.speechPatterns && (
+                    {aimFile.behavior.speechPatterns && (
                       <div>
                         <h4 className="font-semibold text-slate-900 mb-2">Speech Patterns</h4>
-                        <p className="text-slate-700 leading-relaxed">{cmpFile.behavior.speechPatterns}</p>
+                        <p className="text-slate-700 leading-relaxed">{aimFile.behavior.speechPatterns}</p>
                       </div>
                     )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {cmpFile.behavior.mannerisms.length > 0 && (
+                      {aimFile.behavior.mannerisms.length > 0 && (
                         <div>
                           <h4 className="font-semibold text-slate-900 mb-2">Mannerisms</h4>
                           <ul className="space-y-1">
-                            {cmpFile.behavior.mannerisms.map((mannerism, index) => (
+                            {aimFile.behavior.mannerisms.map((mannerism, index) => (
                               <li key={index} className="text-slate-700 text-sm">
                                 • {mannerism}
                               </li>
@@ -534,11 +533,11 @@ export default function CharacterDetailPage() {
                         </div>
                       )}
 
-                      {cmpFile.behavior.habits.length > 0 && (
+                      {aimFile.behavior.habits.length > 0 && (
                         <div>
                           <h4 className="font-semibold text-slate-900 mb-2">Habits</h4>
                           <ul className="space-y-1">
-                            {cmpFile.behavior.habits.map((habit, index) => (
+                            {aimFile.behavior.habits.map((habit, index) => (
                               <li key={index} className="text-slate-700 text-sm">
                                 • {habit}
                               </li>
@@ -560,22 +559,22 @@ export default function CharacterDetailPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {cmpFile.goals.currentQuest && (
+                    {aimFile.goals.currentQuest && (
                       <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-lg border border-indigo-200">
                         <h4 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
                           <Target className="w-4 h-4 text-indigo-600" />
                           Current Quest
                         </h4>
-                        <p className="text-slate-700">{cmpFile.goals.currentQuest}</p>
+                        <p className="text-slate-700">{aimFile.goals.currentQuest}</p>
                       </div>
                     )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {cmpFile.goals.shortTerm.length > 0 && (
+                      {aimFile.goals.shortTerm.length > 0 && (
                         <div>
                           <h4 className="font-semibold text-slate-900 mb-2">Short-term Goals</h4>
                           <ul className="space-y-1">
-                            {cmpFile.goals.shortTerm.map((goal, index) => (
+                            {aimFile.goals.shortTerm.map((goal, index) => (
                               <li key={index} className="text-slate-700 text-sm">
                                 • {goal}
                               </li>
@@ -584,11 +583,11 @@ export default function CharacterDetailPage() {
                         </div>
                       )}
 
-                      {cmpFile.goals.longTerm.length > 0 && (
+                      {aimFile.goals.longTerm.length > 0 && (
                         <div>
                           <h4 className="font-semibold text-slate-900 mb-2">Long-term Goals</h4>
                           <ul className="space-y-1">
-                            {cmpFile.goals.longTerm.map((goal, index) => (
+                            {aimFile.goals.longTerm.map((goal, index) => (
                               <li key={index} className="text-slate-700 text-sm">
                                 • {goal}
                               </li>
@@ -598,14 +597,14 @@ export default function CharacterDetailPage() {
                       )}
                     </div>
 
-                    {cmpFile.goals.dreams.length > 0 && (
+                    {aimFile.goals.dreams.length > 0 && (
                       <div>
                         <h4 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
                           <Sparkles className="w-4 h-4 text-pink-500" />
                           Dreams & Aspirations
                         </h4>
                         <ul className="space-y-1">
-                          {cmpFile.goals.dreams.map((dream, index) => (
+                          {aimFile.goals.dreams.map((dream, index) => (
                             <li key={index} className="text-slate-700 text-sm">
                               • {dream}
                             </li>
@@ -621,27 +620,27 @@ export default function CharacterDetailPage() {
         </div>
 
         {/* Additional Notes */}
-        {cmpFile.notes && (
+        {aimFile.notes && (
           <Card className="bg-white/60 backdrop-blur-sm border-slate-200/50">
             <CardHeader>
               <CardTitle>Additional Notes</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">{cmpFile.notes}</p>
+              <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">{aimFile.notes}</p>
             </CardContent>
           </Card>
         )}
       </main>
 
-      {/* CMP Editor Modal */}
+      {/* AIM Editor Modal */}
       {showEditor && (
-        <CMPEditor
-          oraNumber={cmpFile.oraNumber}
-          oraName={cmpFile.oraName}
-          oraImage={cmpFile.oraImage}
+        <AIMEditor
+          oraNumber={aimFile.oraNumber}
+          oraName={aimFile.oraName}
+          oraImage={aimFile.oraImage}
           onClose={handleCloseEditor}
           onSave={() => {
-            console.log("CMP file updated successfully")
+            console.log("AIM file updated successfully")
           }}
         />
       )}

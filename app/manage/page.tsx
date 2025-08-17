@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import type { CMPFile } from "@/types/cmp"
-import { CMPStorage } from "@/lib/cmp-storage"
+import type { AIMFile } from "@/types/aim"
+import { AIMStorage } from "@/lib/aim-storage"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -18,8 +18,8 @@ import Link from "next/link"
 
 export default function ManagePage() {
   const router = useRouter()
-  const [cmpFiles, setCmpFiles] = useState<CMPFile[]>([])
-  const [filteredFiles, setFilteredFiles] = useState<CMPFile[]>([])
+  const [aimFiles, setAimFiles] = useState<AIMFile[]>([])
+  const [filteredFiles, setFilteredFiles] = useState<AIMFile[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set())
   const [sortBy, setSortBy] = useState<"name" | "created" | "updated" | "completion">("updated")
@@ -28,68 +28,68 @@ export default function ManagePage() {
   const [importText, setImportText] = useState("")
 
   useEffect(() => {
-    loadCMPFiles()
+    loadAIMFiles()
   }, [])
 
   useEffect(() => {
     filterAndSortFiles()
-  }, [cmpFiles, searchQuery, sortBy, filterBy])
+  }, [aimFiles, searchQuery, sortBy, filterBy])
 
-  const loadCMPFiles = () => {
-    const files = CMPStorage.getAll()
-    setCmpFiles(files)
+  const loadAIMFiles = () => {
+    const files = AIMStorage.getAll()
+    setAimFiles(files)
   }
 
-  const getCompletionPercentage = (cmpFile: CMPFile) => {
+  const getCompletionPercentage = (aimFile: AIMFile) => {
     let totalFields = 0
     let filledFields = 0
 
     // Core identity
     totalFields += 4
-    if (cmpFile.characterName) filledFields++
-    if (cmpFile.nickname) filledFields++
-    if (cmpFile.age) filledFields++
-    if (cmpFile.species) filledFields++
+    if (aimFile.characterName) filledFields++
+    if (aimFile.nickname) filledFields++
+    if (aimFile.age) filledFields++
+    if (aimFile.species) filledFields++
 
     // Personality
     totalFields += 6
-    if (cmpFile.personality.primaryTraits.length > 0) filledFields++
-    if (cmpFile.personality.secondaryTraits.length > 0) filledFields++
-    if (cmpFile.personality.temperament) filledFields++
-    if (cmpFile.personality.motivations.length > 0) filledFields++
-    if (cmpFile.personality.fears.length > 0) filledFields++
-    if (cmpFile.personality.quirks.length > 0) filledFields++
+    if (aimFile.personality.primaryTraits.length > 0) filledFields++
+    if (aimFile.personality.secondaryTraits.length > 0) filledFields++
+    if (aimFile.personality.temperament) filledFields++
+    if (aimFile.personality.motivations.length > 0) filledFields++
+    if (aimFile.personality.fears.length > 0) filledFields++
+    if (aimFile.personality.quirks.length > 0) filledFields++
 
     // Backstory
     totalFields += 4
-    if (cmpFile.backstory.origin) filledFields++
-    if (cmpFile.backstory.childhood) filledFields++
-    if (cmpFile.backstory.formativeEvents.length > 0) filledFields++
-    if (cmpFile.backstory.achievements.length > 0) filledFields++
+    if (aimFile.backstory.origin) filledFields++
+    if (aimFile.backstory.childhood) filledFields++
+    if (aimFile.backstory.formativeEvents.length > 0) filledFields++
+    if (aimFile.backstory.achievements.length > 0) filledFields++
 
     // Abilities
     totalFields += 3
-    if (cmpFile.abilities.strengths.length > 0) filledFields++
-    if (cmpFile.abilities.weaknesses.length > 0) filledFields++
-    if (cmpFile.abilities.specialPowers.length > 0) filledFields++
+    if (aimFile.abilities.strengths.length > 0) filledFields++
+    if (aimFile.abilities.weaknesses.length > 0) filledFields++
+    if (aimFile.abilities.specialPowers.length > 0) filledFields++
 
     // Behavior
     totalFields += 3
-    if (cmpFile.behavior.speechPatterns) filledFields++
-    if (cmpFile.behavior.mannerisms.length > 0) filledFields++
-    if (cmpFile.behavior.habits.length > 0) filledFields++
+    if (aimFile.behavior.speechPatterns) filledFields++
+    if (aimFile.behavior.mannerisms.length > 0) filledFields++
+    if (aimFile.behavior.habits.length > 0) filledFields++
 
     // Goals
     totalFields += 3
-    if (cmpFile.goals.shortTerm.length > 0) filledFields++
-    if (cmpFile.goals.longTerm.length > 0) filledFields++
-    if (cmpFile.goals.dreams.length > 0) filledFields++
+    if (aimFile.goals.shortTerm.length > 0) filledFields++
+    if (aimFile.goals.longTerm.length > 0) filledFields++
+    if (aimFile.goals.dreams.length > 0) filledFields++
 
     return Math.round((filledFields / totalFields) * 100)
   }
 
   const filterAndSortFiles = () => {
-    let filtered = [...cmpFiles]
+    let filtered = [...aimFiles]
 
     // Apply search filter
     if (searchQuery) {
@@ -148,11 +148,11 @@ export default function ManagePage() {
   const handleBulkExport = () => {
     if (selectedFiles.size === 0) return
 
-    const selectedCMPFiles = filteredFiles.filter((file) => selectedFiles.has(file.id))
+    const selectedAIMFiles = filteredFiles.filter((file) => selectedFiles.has(file.id))
     const exportData = {
       exportedAt: new Date().toISOString(),
       version: "1.0",
-      files: selectedCMPFiles,
+      files: selectedAIMFiles,
     }
 
     const jsonString = JSON.stringify(exportData, null, 2)
@@ -160,7 +160,7 @@ export default function ManagePage() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `sugartown-cmp-export-${new Date().toISOString().split("T")[0]}.json`
+    a.download = `sugartown-aim-export-${new Date().toISOString().split("T")[0]}.json`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -170,12 +170,12 @@ export default function ManagePage() {
   const handleBulkDelete = () => {
     if (selectedFiles.size === 0) return
 
-    if (confirm(`Are you sure you want to delete ${selectedFiles.size} CMP file(s)? This action cannot be undone.`)) {
+    if (confirm(`Are you sure you want to delete ${selectedFiles.size} AIM file(s)? This action cannot be undone.`)) {
       selectedFiles.forEach((fileId) => {
-        CMPStorage.delete(fileId)
+        AIMStorage.delete(fileId)
       })
       setSelectedFiles(new Set())
-      loadCMPFiles()
+      loadAIMFiles()
     }
   }
 
@@ -189,27 +189,27 @@ export default function ManagePage() {
       let importedCount = 0
       filesToImport.forEach((fileData: any) => {
         try {
-          const cmpFile = CMPStorage.import(JSON.stringify(fileData))
+          const aimFile = AIMStorage.import(JSON.stringify(fileData))
           // Generate new ID to avoid conflicts
-          cmpFile.id = `cmp-${cmpFile.oraNumber}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-          cmpFile.updatedAt = new Date().toISOString()
-          CMPStorage.save(cmpFile)
+          aimFile.id = `aim-${aimFile.oraNumber}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+          aimFile.updatedAt = new Date().toISOString()
+          AIMStorage.save(aimFile)
           importedCount++
         } catch (error) {
           console.error("Failed to import file:", error)
         }
       })
 
-      alert(`Successfully imported ${importedCount} CMP file(s)`)
+      alert(`Successfully imported ${importedCount} AIM file(s)`)
       setImportText("")
       setShowImportDialog(false)
-      loadCMPFiles()
+      loadAIMFiles()
     } catch (error) {
-      alert("Failed to import CMP files. Please check the format and try again.")
+      alert("Failed to import AIM files. Please check the format and try again.")
     }
   }
 
-  const exportReadableFormat = (file: CMPFile) => {
+  const exportReadableFormat = (file: AIMFile) => {
     const readableContent = `
 # ${file.characterName} - Character Profile
 **Ora #${file.oraNumber}**
@@ -287,8 +287,8 @@ ${file.notes ? `## Additional Notes\n${file.notes}\n` : ""}
                   <FileText className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-slate-900">CMP Management</h1>
-                  <p className="text-slate-600">{cmpFiles.length} character profiles</p>
+                  <h1 className="text-2xl font-bold text-slate-900">AIM Management</h1>
+                  <p className="text-slate-600">{aimFiles.length} character profiles</p>
                 </div>
               </div>
             </div>
@@ -303,16 +303,16 @@ ${file.notes ? `## Additional Notes\n${file.notes}\n` : ""}
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl">
                   <DialogHeader>
-                    <DialogTitle>Import CMP Files</DialogTitle>
+                    <DialogTitle>Import AIM Files</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4">
                     <div>
-                      <Label htmlFor="importText">Paste CMP JSON data:</Label>
+                      <Label htmlFor="importText">Paste AIM JSON data:</Label>
                       <Textarea
                         id="importText"
                         value={importText}
                         onChange={(e) => setImportText(e.target.value)}
-                        placeholder="Paste your exported CMP JSON data here..."
+                        placeholder="Paste your exported AIM JSON data here..."
                         rows={10}
                         className="font-mono text-sm"
                       />
@@ -399,7 +399,7 @@ ${file.notes ? `## Additional Notes\n${file.notes}\n` : ""}
           )}
         </div>
 
-        {/* CMP Files Grid */}
+        {/* AIM Files Grid */}
         {filteredFiles.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredFiles.map((file) => {
@@ -439,7 +439,7 @@ ${file.notes ? `## Additional Notes\n${file.notes}\n` : ""}
                     {/* Completion Progress */}
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-slate-600">Profile Completion</span>
+                        <span className="text-sm text-slate-600">AIM Completion</span>
                         <span className="text-sm font-medium">{completion}%</span>
                       </div>
                       <div className="w-full bg-slate-200 rounded-full h-2">
@@ -504,9 +504,9 @@ ${file.notes ? `## Additional Notes\n${file.notes}\n` : ""}
                         size="sm"
                         variant="destructive"
                         onClick={() => {
-                          if (confirm(`Delete CMP file for ${file.characterName}?`)) {
-                            CMPStorage.delete(file.id)
-                            loadCMPFiles()
+                          if (confirm(`Delete AIM file for ${file.characterName}?`)) {
+                            AIMStorage.delete(file.id)
+                            loadAIMFiles()
                           }
                         }}
                       >
@@ -524,12 +524,12 @@ ${file.notes ? `## Additional Notes\n${file.notes}\n` : ""}
               <FileText className="w-12 h-12 text-slate-400" />
             </div>
             <h2 className="text-2xl font-bold text-slate-900 mb-4">
-              {cmpFiles.length === 0 ? "No CMP Files Found" : "No Files Match Your Search"}
+              {aimFiles.length === 0 ? "No AIM Files Found" : "No Files Match Your Search"}
             </h2>
             <p className="text-slate-600 mb-6">
-              {cmpFiles.length === 0
+              {aimFiles.length === 0
                 ? "Create your first character profile by going to the dashboard and selecting an Ora NFT."
-                : "Try adjusting your search terms or filters to find the CMP files you're looking for."}
+                : "Try adjusting your search terms or filters to find the AIM files you're looking for."}
             </p>
             <Button onClick={() => router.push("/")}>Go to Dashboard</Button>
           </div>

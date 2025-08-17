@@ -1,4 +1,4 @@
-export interface CMPFile {
+export interface AIMFile {
   id: string
   oraNumber: string
   oraName: string
@@ -91,10 +91,10 @@ export interface CMPFile {
   version: string
 }
 
-export interface CMPTemplate {
+export interface AIMTemplate {
   id: string
   name: string
   description: string
   category: string
-  template: Partial<CMPFile>
+  template: Partial<AIMFile>
 }
