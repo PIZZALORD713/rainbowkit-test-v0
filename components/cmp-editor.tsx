@@ -77,7 +77,7 @@ export function CMPEditor({ oraNumber, oraName, oraImage, onSave, onClose }: CMP
       },
       tags: [],
       notes: "",
-      version: 1,
+      version: "1",
     }
   })
 

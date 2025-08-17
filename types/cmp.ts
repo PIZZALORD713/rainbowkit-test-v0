@@ -88,7 +88,7 @@ export interface CMPFile {
   // Metadata
   tags: string[]
   notes: string
-  version: number
+  version: string
 }
 
 export interface CMPTemplate {
