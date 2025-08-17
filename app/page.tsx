@@ -135,8 +135,8 @@ export default function SugartownOraDashboard() {
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">OraKit</h1>
-                <p className="text-sm text-slate-600">{"Avatar Identity Matrix"}</p>
+                <h1 className="text-2xl font-bold text-slate-900">Sugartown Ora Dashboard</h1>
+                <p className="text-sm text-slate-600">Character Modeling Protocol</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -148,6 +148,16 @@ export default function SugartownOraDashboard() {
                   </Button>
                 </Link>
               )}
+              <Button
+                variant="outline"
+                className="flex items-center gap-2 bg-transparent"
+                onClick={() => {
+                  setSelectionMode((prev) => !prev)
+                  setSelectedOras([])
+                }}
+              >
+                {selectionMode ? "Exit Bulk Edit" : "Bulk Edit CMP"}
+              </Button>
               <CustomConnectButton />
             </div>
           </div>
@@ -162,7 +172,8 @@ export default function SugartownOraDashboard() {
             Discover Your Ora Collection
           </h2>
           <p className="text-xl text-slate-600 mb-8 max-w-3xl mx-auto leading-relaxed">
-            Explore your unique Sugartown Ora NFTs and create detailed character spec sheets.     
+            Explore your unique Sugartown Ora NFTs and create detailed character spec sheets with our advanced Character
+            Modeling Protocol (CMP)
           </p>
 
           {/* Search Section */}
