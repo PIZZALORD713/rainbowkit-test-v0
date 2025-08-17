@@ -148,16 +148,6 @@ export default function SugartownOraDashboard() {
                   </Button>
                 </Link>
               )}
-              <Button
-                variant="outline"
-                className="flex items-center gap-2 bg-transparent"
-                onClick={() => {
-                  setSelectionMode((prev) => !prev)
-                  setSelectedOras([])
-                }}
-              >
-                {selectionMode ? "Exit Bulk Edit" : "Bulk Edit CMP"}
-              </Button>
               <CustomConnectButton />
             </div>
           </div>
