@@ -4,6 +4,7 @@ import { useState, useMemo } from "react"
 import { X, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import type { AIMFile } from "@/types/aim"
 
 interface SelectedOra {
   name: string
@@ -18,7 +19,6 @@ interface BulkEditModalProps {
   onClose: () => void
 }
 
-/** Normalize trait keys (lowercase, underscores) */
 function normalizeTraits(traits: Record<string, string>) {
   const normalized: Record<string, string> = {}
   Object.entries(traits).forEach(([key, value]) => {
@@ -28,37 +28,70 @@ function normalizeTraits(traits: Record<string, string>) {
   return normalized
 }
 
+function buildAIMFile(ora: SelectedOra): AIMFile {
+  const now = new Date().toISOString()
+  const normalizedTraits = normalizeTraits(ora.traits)
+
+  return {
+    id: `aim-${ora.oraNumber}-${Date.now()}`,
+    oraNumber: ora.oraNumber,
+    oraName: ora.name,
+    oraImage: ora.image,
+    characterName: ora.name,
+    createdAt: now,
+    updatedAt: now,
+    version: "1",
+    personality: {
+      primaryTraits: [normalizedTraits.head, normalizedTraits.eyes].filter(Boolean),
+      secondaryTraits: [],
+      alignment: "True Neutral",
+      temperament: "",
+      motivations: [],
+      fears: [],
+      quirks: [],
+    },
+    backstory: {
+      origin: "",
+      childhood: "",
+      formativeEvents: [],
+      relationships: [],
+      achievements: [],
+      failures: [],
+    },
+    abilities: {
+      strengths: [],
+      weaknesses: [],
+      specialPowers: [],
+      skills: [],
+    },
+    behavior: {
+      speechPatterns: "",
+      mannerisms: [],
+      habits: [],
+      socialStyle: "Ambivert",
+      conflictResolution: "",
+      decisionMaking: "",
+    },
+    appearance: {
+      clothing: normalizedTraits.clothing || "",
+      distinctiveFeatures: [],
+      accessories: [normalizedTraits.face_accessory].filter(Boolean),
+    },
+    goals: {
+      shortTerm: [],
+      longTerm: [],
+      dreams: [],
+    },
+    tags: [],
+    notes: "",
+  }
+}
+
 export default function BulkEditModal({ selectedOras, collectionName, onClose }: BulkEditModalProps) {
   const [copied, setCopied] = useState(false)
 
-  const exportData = useMemo(() => {
-    return {
-      collection: collectionName,
-      exportDate: new Date().toISOString(),
-      totalCharacters: selectedOras.length,
-      instructions: {
-        purpose: "AI-powered profile generation",
-        requirements: ["analyze visual traits", "generate unique lore", "assign personality and behavioural traits"],
-        profileAttributes: {
-          archetype: "Character class/role",
-          alignment: "Moral compass",
-          tone: "Communication style",
-          tagline: "Short memorable phrase",
-          lore: "Character backstory",
-          catchphrase: "Signature saying",
-        },
-      },
-      characters: selectedOras.map((ora) => ({
-        tokenId: ora.oraNumber,
-        currentName: ora.name,
-        imageUrl: ora.image,
-        visualTraits: normalizeTraits(ora.traits),
-        profileToGenerate: {},
-      })),
-    }
-  }, [selectedOras, collectionName])
-
-  const jsonString = JSON.stringify(exportData, null, 2)
+  const aimFiles = useMemo(() => selectedOras.map(buildAIMFile), [selectedOras])
+  const jsonString = JSON.stringify(aimFiles, null, 2)
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(jsonString)
@@ -71,7 +104,7 @@ export default function BulkEditModal({ selectedOras, collectionName, onClose }:
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.href = url
-    link.download = "bulk_cmp_export.json"
+    link.download = "bulk_aim_export.json"
     link.click()
     URL.revokeObjectURL(url)
   }
@@ -79,10 +112,9 @@ export default function BulkEditModal({ selectedOras, collectionName, onClose }:
   return (
     <div className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
           <h2 className="flex items-center gap-2 text-lg font-semibold">
-            Bulk CMP Export
+            Bulk AIM Export
             <Badge variant="secondary">{selectedOras.length}</Badge>
           </h2>
           <button
@@ -94,11 +126,9 @@ export default function BulkEditModal({ selectedOras, collectionName, onClose }:
           </button>
         </div>
 
-        {/* Instructions & Preview */}
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            Use this tool to generate AI-powered character profiles for your selected NFTs. The exported JSON includes
-            instructions and fields for AI tools.
+            Exported data now matches the AIM file structure and can be imported back into the AIM Editor.
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             {selectedOras.map((ora) => (
@@ -120,7 +150,6 @@ export default function BulkEditModal({ selectedOras, collectionName, onClose }:
           </div>
         </div>
 
-        {/* Footer actions */}
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-200 dark:border-slate-700">
           <Button variant="outline" onClick={onClose}>
             Cancel
@@ -135,7 +164,7 @@ export default function BulkEditModal({ selectedOras, collectionName, onClose }:
             )}
           </Button>
           <Button variant="default" onClick={handleDownload}>
-            Export JSON File
+            Export AIM Files
           </Button>
         </div>
       </div>

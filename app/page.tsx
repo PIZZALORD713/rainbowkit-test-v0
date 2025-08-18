@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { useAccount, useEnsName } from "wagmi"
 import CustomConnectButton from "@/components/custom-connect-button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Wallet, ExternalLink, Sparkles, User, FileText, Eye, Settings } from "lucide-react"
-import { CMPEditor } from "@/components/cmp-editor"
-import { CMPStorage } from "@/lib/cmp-storage"
+import { Search, Wallet, ExternalLink, Sparkles, User, FileText, Eye, Settings, Copy, CheckCircle } from "lucide-react"
+import { AIMEditor } from "@/components/aim-editor"
+import { AIMStorage } from "@/lib/aim-storage"
 import BulkEditModal from "@/components/bulk-edit-modal"
 import Link from "next/link"
 
@@ -48,10 +48,18 @@ export default function SugartownOraDashboard() {
   const [error, setError] = useState("")
   const [searchedWallet, setSearchedWallet] = useState("")
   const [selectedOra, setSelectedOra] = useState<Ora | null>(null)
-  const [showCMPEditor, setShowCMPEditor] = useState(false)
+  const [showAIMEditor, setShowAIMEditor] = useState(false)
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedOras, setSelectedOras] = useState<Ora[]>([])
   const [showBulkModal, setShowBulkModal] = useState(false)
+  const [aimRefreshTrigger, setAimRefreshTrigger] = useState(0)
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copying" | "copied">("idle")
+
+  useEffect(() => {
+    if (isConnected && address && !loading && oras.length === 0) {
+      handleSearch(address)
+    }
+  }, [isConnected, address])
 
   const handleSearch = async (walletToSearch?: string) => {
     const targetWallet = walletToSearch || searchQuery.trim()
@@ -92,13 +100,93 @@ export default function SugartownOraDashboard() {
     }
   }
 
-  const handleOpenCMPEditor = (ora: Ora) => {
-    setSelectedOra(ora)
-    setShowCMPEditor(true)
+  const handleCopyAll = async () => {
+    setCopyStatus("copying")
+
+    try {
+      const mcpData = {
+        name: "sugartown-oras",
+        version: "1.0.0",
+        description: "Sugartown Ora collection with Avatar Identity Models",
+        characters: oras.map((ora) => {
+          const aimFile = AIMStorage.getByOraNumber(ora.oraNumber)
+
+          return {
+            id: ora.oraNumber,
+            name: aimFile?.characterName || ora.name,
+            description: aimFile?.backstory?.origin || `${ora.name} from the Sugartown collection`,
+            personality: aimFile?.personality || {
+              primaryTraits: [],
+              secondaryTraits: [],
+              alignment: "True Neutral",
+              temperament: "",
+              motivations: [],
+              fears: [],
+              quirks: [],
+            },
+            backstory: aimFile?.backstory || {
+              origin: "",
+              childhood: "",
+              formativeEvents: [],
+              relationships: [],
+              achievements: [],
+              failures: [],
+            },
+            abilities: aimFile?.abilities || {
+              strengths: [],
+              weaknesses: [],
+              specialPowers: [],
+              skills: [],
+            },
+            behavior: aimFile?.behavior || {
+              speechPatterns: "",
+              mannerisms: [],
+              habits: [],
+              socialStyle: "Ambivert",
+              conflictResolution: "",
+              decisionMaking: "",
+            },
+            appearance: {
+              ...aimFile?.appearance,
+              nftImage: ora.image,
+              traits: ora.traits,
+            },
+            goals: aimFile?.goals || {
+              shortTerm: [],
+              longTerm: [],
+              dreams: [],
+              currentQuest: "",
+            },
+            metadata: {
+              oraNumber: ora.oraNumber,
+              openseaUrl: ora.openseaUrl,
+              hasAIM: !!aimFile,
+              createdAt: aimFile?.createdAt,
+              updatedAt: aimFile?.updatedAt,
+              version: aimFile?.version || "1",
+            },
+          }
+        }),
+      }
+
+      const formattedData = JSON.stringify(mcpData, null, 2)
+      await navigator.clipboard.writeText(formattedData)
+
+      setCopyStatus("copied")
+      setTimeout(() => setCopyStatus("idle"), 2000)
+    } catch (error) {
+      console.error("Failed to copy:", error)
+      setCopyStatus("idle")
+    }
   }
 
-  const handleCloseCMPEditor = () => {
-    setShowCMPEditor(false)
+  const handleOpenAIMEditor = (ora: Ora) => {
+    setSelectedOra(ora)
+    setShowAIMEditor(true)
+  }
+
+  const handleCloseAIMEditor = () => {
+    setShowAIMEditor(false)
     setSelectedOra(null)
   }
 
@@ -118,11 +206,27 @@ export default function SugartownOraDashboard() {
     return colors[traitType as keyof typeof colors] || "bg-gray-100 text-gray-800"
   }
 
-  const hasCMPFile = (oraNumber: string) => {
-    return CMPStorage.getByOraNumber(oraNumber) !== null
-  }
+  const getDisplayName = useCallback(
+    (ora: Ora) => {
+      const aimFile = AIMStorage.getByOraNumber(ora.oraNumber)
+      return aimFile?.characterName || ora.name
+    },
+    [aimRefreshTrigger],
+  )
 
-  const cmpFileCount = CMPStorage.getAll().length
+  const hasAIMFile = useCallback(
+    (oraNumber: string) => {
+      return AIMStorage.getByOraNumber(oraNumber) !== null
+    },
+    [aimRefreshTrigger],
+  )
+
+  const aimFileCount = AIMStorage.getAll().length + aimRefreshTrigger * 0 // Trigger recalculation
+
+  const handleAIMSave = useCallback(() => {
+    console.log("AIM file saved successfully")
+    setAimRefreshTrigger((prev) => prev + 1) // Trigger re-render to show updated names
+  }, [])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -140,23 +244,26 @@ export default function SugartownOraDashboard() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              {cmpFileCount > 0 && (
+              {aimFileCount > 0 && (
                 <Link href="/manage">
-                  <Button variant="outline" className="flex items-center gap-2 bg-transparent">
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2 bg-white/80 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 border-slate-300 hover:border-indigo-400 text-slate-700 hover:text-indigo-700 font-medium shadow-sm hover:shadow-md transition-all duration-300 transform hover:scale-[1.02]"
+                  >
                     <Settings className="w-4 h-4" />
-                    Manage CMP Files ({cmpFileCount})
+                    Manage AIM Files ({aimFileCount})
                   </Button>
                 </Link>
               )}
               <Button
                 variant="outline"
-                className="flex items-center gap-2 bg-transparent"
+                className="flex items-center gap-2 bg-white/80 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 border-slate-300 hover:border-purple-400 text-slate-700 hover:text-purple-700 font-medium shadow-sm hover:shadow-md transition-all duration-300 transform hover:scale-[1.02]"
                 onClick={() => {
                   setSelectionMode((prev) => !prev)
                   setSelectedOras([])
                 }}
               >
-                {selectionMode ? "Exit Bulk Edit" : "Bulk Edit CMP"}
+                {selectionMode ? "Exit Bulk Edit" : "Bulk Edit AIM"}
               </Button>
               <CustomConnectButton />
             </div>
@@ -169,10 +276,14 @@ export default function SugartownOraDashboard() {
         {/* Hero Section */}
         <div className="text-center mb-12">
           <h2 className="text-5xl font-bold text-slate-900 mb-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-            Discover Your Ora Collection
+            Discover Your Ora Collection and Define Your Avatar Identity Model
           </h2>
-          <p className="text-xl text-slate-600 mb-8 max-w-3xl mx-auto leading-relaxed">
-            Explore your unique Sugartown Ora NFTs and create detailed character spec sheets, use them for AI prompts or character integrations                 
+          <p className="text-xl text-slate-600 mb-4 max-w-3xl mx-auto leading-relaxed">
+            AIM is the soul of your Ora — craft personality, backstory, goals and behaviour in one place.
+          </p>
+          <p className="text-lg text-slate-500 mb-8 max-w-2xl mx-auto leading-relaxed">
+            Explore your unique Sugartown Ora NFTs and create detailed character profiles with our Avatar Identity Model
+            system.
           </p>
 
           {/* Search Section */}
@@ -190,6 +301,7 @@ export default function SugartownOraDashboard() {
               </TabsList>
 
               <TabsContent value="search" className="space-y-4">
+                <p className="text-slate-600 mb-4">Enter your wallet address or ENS to start editing your AIM.</p>
                 <div className="flex gap-4">
                   <div className="flex-1 relative">
                     <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
@@ -205,9 +317,16 @@ export default function SugartownOraDashboard() {
                   <Button
                     onClick={() => handleSearch()}
                     disabled={loading}
-                    className="h-14 px-8 text-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                    className="h-14 px-8 text-lg font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] disabled:transform-none disabled:hover:scale-100"
                   >
-                    {loading ? "Searching..." : "Search"}
+                    {loading ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Searching...
+                      </div>
+                    ) : (
+                      "Search"
+                    )}
                   </Button>
                 </div>
               </TabsContent>
@@ -217,7 +336,7 @@ export default function SugartownOraDashboard() {
                   <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-slate-200/50">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center">
+                        <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
                           <User className="w-6 h-6 text-white" />
                         </div>
                         <div>
@@ -227,13 +346,12 @@ export default function SugartownOraDashboard() {
                           </p>
                         </div>
                       </div>
-                      <Button
-                        onClick={handleSearchConnectedWallet}
-                        disabled={loading}
-                        className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
-                      >
-                        {loading ? "Loading..." : "Load My Oras"}
-                      </Button>
+                      {loading && (
+                        <div className="flex items-center gap-2 text-slate-600">
+                          <div className="w-4 h-4 border-2 border-slate-300 border-t-indigo-600 rounded-full animate-spin" />
+                          Loading ORAs...
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -263,6 +381,28 @@ export default function SugartownOraDashboard() {
                     `Found in wallet: ${searchedWallet.length > 20 ? `${searchedWallet.slice(0, 6)}...${searchedWallet.slice(-4)}` : searchedWallet}`}
                 </p>
               </div>
+              <Button
+                onClick={handleCopyAll}
+                disabled={copyStatus === "copying"}
+                className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] disabled:transform-none disabled:hover:scale-100"
+              >
+                {copyStatus === "copying" ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Copying...
+                  </>
+                ) : copyStatus === "copied" ? (
+                  <>
+                    <CheckCircle className="w-4 h-4" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    Copy All (MCP Format)
+                  </>
+                )}
+              </Button>
             </div>
 
             {selectionMode && (
@@ -271,10 +411,20 @@ export default function SugartownOraDashboard() {
                   {selectedOras.length} of {oras.length} selected
                 </span>
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setSelectedOras(oras)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedOras(oras)}
+                    className="bg-white/80 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 border-slate-300 hover:border-blue-400 text-slate-700 hover:text-blue-700 font-medium shadow-sm hover:shadow-md transition-all duration-200"
+                  >
                     Select All
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => setSelectedOras([])}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedOras([])}
+                    className="bg-white/80 hover:bg-slate-50 border-slate-300 hover:border-slate-400 text-slate-700 hover:text-slate-900 font-medium shadow-sm hover:shadow-md transition-all duration-200"
+                  >
                     Clear
                   </Button>
                   <Button
@@ -282,6 +432,7 @@ export default function SugartownOraDashboard() {
                     size="sm"
                     onClick={() => setShowBulkModal(true)}
                     disabled={!selectedOras.length}
+                    className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 font-semibold shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Export Selected ({selectedOras.length})
                   </Button>
@@ -292,6 +443,7 @@ export default function SugartownOraDashboard() {
                       setSelectionMode(false)
                       setSelectedOras([])
                     }}
+                    className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium transition-all duration-200"
                   >
                     Cancel
                   </Button>
@@ -299,11 +451,11 @@ export default function SugartownOraDashboard() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
               {oras.map((ora) => (
                 <Card
                   key={ora.oraNumber}
-                  className="group overflow-hidden hover:shadow-xl transition-all duration-300 border-slate-200/50 bg-white/60 backdrop-blur-sm hover:bg-white/80"
+                  className="group overflow-hidden hover:shadow-2xl transition-all duration-500 border-slate-200/50 bg-white/70 backdrop-blur-sm hover:bg-white/90 hover:scale-[1.02] hover:-translate-y-1"
                 >
                   {selectionMode && (
                     <input
@@ -316,94 +468,107 @@ export default function SugartownOraDashboard() {
                           checked ? [...prev, ora] : prev.filter((o) => o.oraNumber !== ora.oraNumber),
                         )
                       }}
-                      className="absolute top-2 left-2 z-20 w-4 h-4 text-indigo-600 bg-white border-gray-300 rounded focus:ring-indigo-500"
+                      className="absolute top-3 left-3 z-20 w-5 h-5 text-indigo-600 bg-white border-2 border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 shadow-sm"
                     />
                   )}
-                  <div className="aspect-square relative overflow-hidden">
+
+                  <div className="aspect-square relative overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200">
                     <img
                       src={ora.image || "/placeholder.svg?height=400&width=400&text=Ora"}
                       alt={ora.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
                     />
-                    <div className="absolute top-3 right-3">
-                      <Badge className="bg-white/90 text-slate-800 font-semibold">#{ora.oraNumber}</Badge>
+                    {/* Gradient overlay for better text readability */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                    <div className="absolute top-4 right-4">
+                      <Badge className="bg-white/95 text-slate-800 font-bold text-sm px-3 py-1 shadow-lg backdrop-blur-sm">
+                        #{ora.oraNumber}
+                      </Badge>
                     </div>
-                    {hasCMPFile(ora.oraNumber) && (
-                      <div className="absolute top-3 left-3">
-                        <Badge className="bg-green-500 text-white font-semibold">CMP</Badge>
+                    {hasAIMFile(ora.oraNumber) && (
+                      <div className="absolute top-4 left-4">
+                        <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white font-bold text-sm px-3 py-1 shadow-lg">
+                          AIM ✓
+                        </Badge>
                       </div>
                     )}
                   </div>
 
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
-                      {ora.name}
+                  <CardHeader className="pb-4 pt-6">
+                    <CardTitle className="text-xl font-bold text-slate-900 group-hover:text-indigo-600 transition-colors duration-300 leading-tight">
+                      {getDisplayName(ora)}
                     </CardTitle>
                   </CardHeader>
 
-                  <CardContent className="pt-0 space-y-4">
+                  <CardContent className="pt-0 pb-6 space-y-5">
                     {Object.keys(ora.traits).length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-sm font-semibold text-slate-700">Traits:</p>
-                        <div className="flex flex-wrap gap-1">
+                      <div className="space-y-3">
+                        <p className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Traits</p>
+                        <div className="space-y-2">
                           {Object.entries(ora.traits)
-                            .slice(0, 4)
+                            .slice(0, 3)
                             .map(([key, value]) => (
-                              <Badge key={key} className={`text-xs ${getTraitColor(key)}`}>
-                                {key}: {value}
-                              </Badge>
+                              <div key={key} className="flex items-center justify-between py-1">
+                                <span className="text-xs font-medium text-slate-600 uppercase tracking-wide">
+                                  {key}
+                                </span>
+                                <Badge className={`text-xs font-medium ${getTraitColor(key)}`}>{value}</Badge>
+                              </div>
                             ))}
-                          {Object.keys(ora.traits).length > 4 && (
-                            <Badge className="text-xs bg-slate-100 text-slate-600">
-                              +{Object.keys(ora.traits).length - 4} more
-                            </Badge>
+                          {Object.keys(ora.traits).length > 3 && (
+                            <div className="text-center pt-1">
+                              <Badge variant="outline" className="text-xs text-slate-500 border-slate-300">
+                                +{Object.keys(ora.traits).length - 3} more traits
+                              </Badge>
+                            </div>
                           )}
                         </div>
                       </div>
                     )}
 
-                    <div
-                      className={`flex items-center justify-between pt-2 gap-2 ${selectionMode ? "opacity-50 pointer-events-none" : ""}`}
-                    >
+                    <div className={`space-y-3 pt-2 ${selectionMode ? "opacity-50 pointer-events-none" : ""}`}>
+                      {/* OpenSea button - secondary action */}
                       <Button
                         variant="outline"
                         size="sm"
-                        className="flex items-center gap-2 bg-transparent hover:bg-indigo-50 hover:border-indigo-300 flex-1"
+                        className="w-full flex items-center justify-center gap-2 h-10 bg-transparent hover:bg-slate-50 border-slate-300 hover:border-slate-400 text-slate-700 hover:text-slate-900 transition-all duration-200"
                         onClick={() => window.open(ora.openseaUrl, "_blank")}
                       >
-                        <ExternalLink className="w-3 h-3" />
-                        OpenSea
+                        <ExternalLink className="w-4 h-4" />
+                        View on OpenSea
                       </Button>
 
-                      {hasCMPFile(ora.oraNumber) ? (
-                        <div className="flex gap-1 flex-1">
+                      {/* Primary AIM actions */}
+                      {hasAIMFile(ora.oraNumber) ? (
+                        <div className="grid grid-cols-2 gap-2">
                           <Link href={`/character/${ora.oraNumber}`} className="flex-1">
                             <Button
                               size="sm"
                               variant="outline"
-                              className="w-full flex items-center gap-1 bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
+                              className="w-full h-10 flex items-center justify-center gap-2 bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-400 transition-all duration-200"
                             >
-                              <Eye className="w-3 h-3" />
-                              View
+                              <Eye className="w-4 h-4" />
+                              View Profile
                             </Button>
                           </Link>
                           <Button
                             size="sm"
-                            className="flex items-center gap-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-                            onClick={() => handleOpenCMPEditor(ora)}
+                            className="h-10 flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white shadow-md hover:shadow-lg transition-all duration-200"
+                            onClick={() => handleOpenAIMEditor(ora)}
                           >
-                            <FileText className="w-3 h-3" />
-                            Edit
+                            <FileText className="w-4 h-4" />
+                            Edit AIM
                           </Button>
                         </div>
                       ) : (
                         <Button
                           size="sm"
-                          className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 flex-1"
-                          onClick={() => handleOpenCMPEditor(ora)}
+                          className="w-full h-12 flex items-center justify-center gap-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
+                          onClick={() => handleOpenAIMEditor(ora)}
                         >
-                          <FileText className="w-3 h-3" />
-                          Create CMP
+                          <FileText className="w-4 h-4" />
+                          Create AIM Profile
                         </Button>
                       )}
                     </div>
@@ -414,12 +579,13 @@ export default function SugartownOraDashboard() {
           </div>
         )}
 
-        {/* CMP Info Section */}
+        {/* AIM Info Section */}
         <div className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg p-8 border border-slate-200/50">
           <div className="text-center mb-8">
-            <h3 className="text-3xl font-bold text-slate-900 mb-4">Avatar Identity Matrix (AIM)   </h3>
+            <h3 className="text-3xl font-bold text-slate-900 mb-4">Avatar Identity Model (AIM)</h3>
             <p className="text-slate-600 text-lg max-w-3xl mx-auto leading-relaxed">
-              Transform your Ora NFTs into rich, interactive characters with detailed personality profiles, backstories, and behavioral traits using our avatar identity editor.
+              Transform your Ora NFTs into rich, interactive characters with detailed personality profiles, backstories,
+              and behavioral traits using our advanced AIM system.
             </p>
           </div>
 
@@ -428,7 +594,7 @@ export default function SugartownOraDashboard() {
               <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
                 <User className="w-8 h-8 text-white" />
               </div>
-              <h4 className="font-bold text-slate-900 mb-3 text-lg">AIM</h4>
+              <h4 className="font-bold text-slate-900 mb-3 text-lg">Personality Matrix</h4>
               <p className="text-slate-600 leading-relaxed">
                 Define core personality traits, behavioral patterns, and psychological profiles that make each Ora
                 unique and memorable.
@@ -460,16 +626,14 @@ export default function SugartownOraDashboard() {
         </div>
       </main>
 
-      {/* CMP Editor Modal */}
-      {showCMPEditor && selectedOra && (
-        <CMPEditor
+      {/* AIM Editor Modal */}
+      {showAIMEditor && selectedOra && (
+        <AIMEditor
           oraNumber={selectedOra.oraNumber}
           oraName={selectedOra.name}
           oraImage={selectedOra.image}
-          onClose={handleCloseCMPEditor}
-          onSave={() => {
-            console.log("CMP file saved successfully")
-          }}
+          onClose={handleCloseAIMEditor}
+          onSave={handleAIMSave}
         />
       )}
 
