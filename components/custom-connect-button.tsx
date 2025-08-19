@@ -1,12 +1,21 @@
 "use client"
 import { ConnectButton } from "@rainbow-me/rainbowkit"
+// Custom wrapper around RainbowKit's render-prop API.
+// Renders three states:
+// 1) not connected → "Connect Wallet"
+// 2) unsupported chain → "Wrong network"
+// 3) connected → account/chain buttons
+// Keep this minimal; heavy re-renders can interfere with RainbowKit internals.
 
 export default function CustomConnectButton() {
   return (
     <div className="relative">
       <ConnectButton.Custom>
         {({ account, chain, openAccountModal, openChainModal, openConnectModal, authenticationStatus, mounted }) => {
-          const ready = mounted && authenticationStatus !== "loading"
+          // When SSR/streaming, RainbowKit mounts client-side.
+// `ready` prevents flashing of wrong state on first paint.
+
+const ready = mounted && authenticationStatus !== "loading"
           const connected =
             ready && account && chain && (!authenticationStatus || authenticationStatus === "authenticated")
 

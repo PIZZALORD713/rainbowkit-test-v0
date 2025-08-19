@@ -1,3 +1,6 @@
+// High-level editor for one AIMFile.
+// Sections: Identity, Personality, Backstory, Abilities, Behavior, Goals, etc.
+// Keep each section independently controlled to avoid clobbering partial edits.
 "use client"
 
 import { useState } from "react"
@@ -96,6 +99,8 @@ export function AIMEditor({ oraNumber, oraName, oraImage, onClose, onSave }: AIM
   const [showImport, setShowImport] = useState(false)
 
   const handleSave = () => {
+    // Persist to localStorage and notify parent.
+    // If you add remote persistence, keep this the single side-effect boundary.
     AIMStorage.save(aimFile)
     onSave()
     onClose()

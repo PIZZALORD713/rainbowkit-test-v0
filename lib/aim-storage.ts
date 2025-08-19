@@ -3,6 +3,7 @@ import type { AIMFile } from "@/types/aim"
 const AIM_STORAGE_KEY = "sugartown-aim-files"
 
 export class AIMStorage {
+  /** Load all AIM files from localStorage. Returns [] if nothing stored. */
   static getAll(): AIMFile[] {
     if (typeof window === "undefined") return []
 
@@ -20,6 +21,7 @@ export class AIMStorage {
     return files.find((file) => file.oraNumber === oraNumber) || null
   }
 
+  // If schemas evolve, consider a lightweight migration step here.
   static save(aimFile: AIMFile): void {
     if (typeof window === "undefined") return
 
@@ -62,6 +64,7 @@ export class AIMStorage {
     return JSON.stringify(file, null, 2)
   }
 
+  // Shared import path. Overwrites only if IDs match; warn users before replacing.
   static import(jsonString: string): AIMFile {
     try {
       const file = JSON.parse(jsonString) as AIMFile

@@ -1,0 +1,306 @@
+*** Begin Patch
+*** Update File: app/providers.tsx
+@@
+ 'use client'
++/**
++ * App-wide providers
++ *
++ * Why this exists:
++ * - Centralizes Wagmi + RainbowKit setup so every page gets the same config.
++ * - Prevents duplicate providers in nested routes which can break wallet state.
++ *
++ * Notes for future devs:
++ * - If you change supported chains or projectId, update both the wagmi config
++ *   and RainbowKitProvider here to keep the modal + hooks in sync.
++ * - RainbowKit's modal uses a portal — make sure no ancestor has CSS transforms
++ *   that would create a new stacking context (see /app/diagnostics).
++ */
+ import React from 'react'
+@@
+ export default function Providers({ children }: { children: React.ReactNode }) {
++  // Keep provider order: WagmiProvider → RainbowKitProvider.
++  // Reversing this will cause hooks to resolve before config is ready.
+   return (
+@@
+-      <RainbowKitProvider modalSize="compact" coolMode>
++      {/* modalSize keeps the connect UI compact; "coolMode" enables subtle motion.
++          Tune these for OraKit's solarpunk/sci‑fi vibe to match the design system. */}
++      <RainbowKitProvider modalSize="compact" coolMode>
+         {children}
+       </RainbowKitProvider>
+*** End Patch
+*** Begin Patch
+*** Update File: components/providers.tsx
+@@
+ 'use client'
++/**
++ * Standalone providers (outside App Router)
++ * Use this only when you need RainbowKit/Wagmi in an isolated tree
++ * (e.g., storybook, embedded widgets). Avoid wrapping the app twice.
++ */
+ import React from 'react'
+@@
+ export function Providers({ children }: { children: React.ReactNode }) {
++  // TIP: If you add custom theme tokens or locale, pass them to RainbowKit here.
+   return (
+@@
+-      <RainbowKitProvider modalSize="compact">
++      {/* Keep feature parity with /app/providers.tsx unless intentionally diverging. */}
++      <RainbowKitProvider modalSize="compact">
+         {children}
+       </RainbowKitProvider>
+*** End Patch
+*** Begin Patch
+*** Update File: components/custom-connect-button.tsx
+@@
+ import { ConnectButton } from '@rainbow-me/rainbowkit'
++// Custom wrapper around RainbowKit's render-prop API.
++// Renders three states:
++// 1) not connected → "Connect Wallet"
++// 2) connecting/wrong network → "Resolve" CTA
++// 3) connected → address/ENS + menu
++// Keep this minimal; heavy re-renders can interfere with RainbowKit internals.
+@@
+ export function CustomConnectButton() {
+   return (
+     <ConnectButton.Custom>
+       {({
+         account,
+         chain,
+         openAccountModal,
+         openChainModal,
+         openConnectModal,
+         authenticationStatus,
+         mounted,
+       }) => {
++        // When SSR/streaming, RainbowKit mounts client-side.
++        // `ready` prevents flashing of wrong state on first paint.
+         const ready = mounted && authenticationStatus !== 'loading'
+         const connected =
+           ready &&
+           account &&
+           chain &&
+           (!authenticationStatus || authenticationStatus === 'authenticated')
+@@
+-        if (!connected) {
++        if (!connected) {
++          // Keep the primary CTA opinionated and short. This is the hero action
++          // for new users arriving to manage their Oras.
+           return (
+             <button onClick={openConnectModal} type="button" className="px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/20 border border-white/20 text-sm">
+               Connect Wallet
+             </button>
+           )
+         }
+@@
+-        if (chain.unsupported) {
++        if (chain.unsupported) {
++          // Guardrail: if user is on an unsupported chain, let them switch quickly.
+           return (
+             <button onClick={openChainModal} type="button" className="px-3 py-1.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-sm">
+               Wrong network
+             </button>
+           )
+         }
+@@
+         return (
+           <div className="flex items-center gap-2">
++            {/* Address/ENS controls. Keep clickable area generous for mobile. */}
+             <button onClick={openAccountModal} className="px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/20 border border-white/20 text-sm">
+               {account?.displayName}
+             </button>
+             <button onClick={openChainModal} className="px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/20 border border-white/20 text-sm">
+               {chain?.hasIcon && chain?.name}
+             </button>
+           </div>
+         )
+       }}
+     </ConnectButton.Custom>
+   )
+ }
+*** End Patch
+*** Begin Patch
+*** Update File: lib/aim-storage.ts
+@@
+-const STORAGE_KEY = 'orakit:aim:files'
++// Namespaced localStorage key for AIM files.
++// NOTE: LocalStorage is per-origin and has ~5–10MB quotas depending on browser.
++// For many Oras, consider IndexedDB or a remote KV (Supabase/Vercel KV).
++const STORAGE_KEY = 'orakit:aim:files'
+@@
+ export class AIMStorage {
++  /** Load all AIM files from localStorage. Returns an empty array if nothing stored.
++   *  Keep this method fast; listing happens frequently on /manage.
++   */
+   static getFiles(): AIMFile[] {
+@@
+   static saveFile(file: AIMFile) {
++    // If schemas evolve, consider a lightweight migration step here.
+     const files = AIMStorage.getFiles()
+     const idx = files.findIndex((f) => f.id === file.id)
+@@
+   static importFile(file: AIMFile, { overwrite = false } = {}) {
++    // Import path is shared by drag‑and‑drop and JSON upload.
++    // `overwrite` will replace an existing id — warn the user before using it.
+     const files = AIMStorage.getFiles()
+*** End Patch
+*** Begin Patch
+*** Update File: types/aim.ts
+@@
+-export interface AIMFile {
++/** Minimal AIM/CMP shape persisted locally.
++ *  Align this with the emerging CMP schema (`cmp.schema.json`) when available.
++ *  Required fields: id, name, createdAt. Others are optional and can evolve.
++ */
++export interface AIMFile {
+   id: string
+   name: string
+   description?: string
+   tags?: string[]
+   createdAt: string
+   updatedAt?: string
+   identity?: {
+     archetype?: string
+     alignment?: string
+     tone?: string
+     tagline?: string
+     lore?: string
+   }
+   traits?: Record<string, number>
+   notes?: string
+ }
+*** End Patch
+*** Begin Patch
+*** Update File: components/aim-editor.tsx
+@@
+ export function AIMEditor({ initial, onSave }: Props) {
++  // High-level editor shell for a single AIMFile.
++  // Sections: Identity, Traits, Notes. Keep each section independently controlled
++  // so partial edits don't clobber other fields.
+   const [file, setFile] = useState<AIMFile>(initial)
+@@
+-  const handleSave = () => {
++  const handleSave = () => {
++    // Persist to local storage and bubble up to parent.
++    // If you add remote persistence later, keep this function the single
++    // side-effect boundary.
+     AIMStorage.saveFile(file)
+     onSave?.(file)
+   }
+*** End Patch
+*** Begin Patch
+*** Update File: components/bulk-edit-modal.tsx
+@@
+ export function BulkExportModal({ selectedIds, onClose }: Props) {
++  // Exports a _subset_ of AIM files as a JSON blob.
++  // Keep the schema stable and documented so files remain portable across tools.
+   const [includeNotes, setIncludeNotes] = useState(true)
+@@
+-  const handleCopy = async () => {
++  const handleCopy = async () => {
++    // Copy to clipboard for quick share. Fallback to download when not permitted.
+     try {
+       await navigator.clipboard.writeText(payload)
+@@
+-  const handleDownload = () => {
++  const handleDownload = () => {
++    // Name the file with date for easier versioning in user folders.
+     const a = document.createElement('a')
+*** End Patch
+*** Begin Patch
+*** Update File: components/import-aim-modal.tsx
+@@
+ export function ImportAIMModal({ onImported, onClose }: Props) {
++  // Drag-and-drop JSON importer for AIM files.
++  // Validates shape and prevents silent overwrites unless explicitly confirmed.
+   const [parsed, setParsed] = useState<ParsedFile[]>([])
+@@
+-  const handleDrop = (files: File[]) => {
++  const handleDrop = (files: File[]) => {
++    // Restrict to .json/.aim; reject huge files (>2MB) to avoid UI freezes.
+     for (const file of files) {
+*** End Patch
+*** Begin Patch
+*** Update File: app/page.tsx
+@@
+ export default function HomePage() {
++  // Collector dashboard entry point.
++  // Flow: resolve ENS → fetch Oras via /api/chatgpt/oras → display grid → inline CMP actions.
+   const [input, setInput] = useState('')
+@@
+-  const handleSearch = async (addressOrEns: string) => {
++  const handleSearch = async (addressOrEns: string) => {
++    // Accept either an EVM address or ENS name. Consider debouncing user input
++    // and caching previous responses in sessionStorage.
+     try {
+*** End Patch
+*** Begin Patch
+*** Update File: app/manage/page.tsx
+@@
+ export default function ManagePage() {
++  // Local profile manager for all saved AIM files.
++  // Expensive operations (filter/sort/metrics) are memoized to keep the list snappy.
+   const [query, setQuery] = useState('')
+@@
+-  const completion = useMemo(() => {
++  const completion = useMemo(() => {
++    // Approximate "profile completeness" as % of filled fields.
++    // If schema expands, update this scoring so it remains meaningful.
+     if (!selected) return 0
+*** End Patch
+*** Begin Patch
+*** Update File: app/diagnostics/page.tsx
+@@
+ export default function DiagnosticsPage() {
++  // Dev-only page to detect CSS transform/perspective/filter on ancestors
++  // that can break RainbowKit's portal positioning. Keep this out of production builds.
+   const [report, setReport] = useState<Report | null>(null)
+*** End Patch
+*** Begin Patch
+*** Update File: app/env-check/page.tsx
+@@
+ export default function EnvCheckPage() {
++  // Checks for required environment variables at runtime.
++  // Useful on first deploy to verify OpenSea keys and base URLs.
+   const [vars, setVars] = useState<EnvVars | null>(null)
+*** End Patch
+*** Begin Patch
+*** Update File: app/wallet-entry/page.tsx
+@@
+ export default function WalletEntryPage() {
++  // Minimal gate for flows that require an active wallet connection.
++  // Prefer this page over duplicating connection logic in multiple routes.
+   const { address, isConnected } = useAccount()
+*** End Patch
+*** Begin Patch
+*** Update File: app/api/chatgpt/oras/route.ts
+@@
+ export async function GET(req: NextRequest) {
++  // Fetches Oras for a wallet via OpenSea API and shapes the response
++  // for the Ora grid. This endpoint is rate-limited by OpenSea — add caching
++  // (e.g., Edge config or a simple in-memory LRU) if you see 429s.
+   const { searchParams } = new URL(req.url)
+   const address = searchParams.get('address')
+@@
+-  const res = await fetch(url, {
++  const res = await fetch(url, {
+     headers: {
+       'x-api-key': process.env.OPENSEA_API_KEY ?? '',
+     },
+   })
+@@
+-  if (!res.ok) {
++  if (!res.ok) {
++    // Surface useful error info to the client, but avoid leaking secrets.
+     return NextResponse.json({ error: 'OpenSea request failed', status: res.status }, { status: res.status })
+   }
+*** End Patch
+*** Begin Patch
+*** Update File: lib/utils.ts
+@@
+-export function cn(...classes: (string | false | null | undefined)[]) {
++// Tiny helper to join Tailwind class lists.
++export function cn(...classes: (string | false | null | undefined)[]) {
+   return classes.filter(Boolean).join(' ')
+ }
+*** End Patch
