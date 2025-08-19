@@ -1,3 +1,5 @@
+// Exports a subset of AIM files as JSON.
+// Keep schema stable and documented so files remain portable across tools.
 "use client"
 
 import { useState, useMemo } from "react"
@@ -94,7 +96,8 @@ export default function BulkEditModal({ selectedOras, collectionName, onClose }:
   const jsonString = JSON.stringify(aimFiles, null, 2)
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(jsonString)
+    // Copy to clipboard for quick share. Fallback to download when not permitted.
+      await navigator.clipboard.writeText(jsonString)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }

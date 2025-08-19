@@ -72,6 +72,8 @@ async function resolveENS(ensName: string): Promise<string | null> {
   }
 }
 
+// Fetch Oras for a wallet via OpenSea v2 and shape response for the grid.
+// OpenSea can rate limit; add caching if you see 429s.
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const walletInput = searchParams.get("address")
@@ -142,6 +144,7 @@ export async function GET(request: NextRequest) {
     console.log(`🔍 DEBUG: Response status: ${response.status}`)
 
     if (!response.ok) {
+      // Surface useful info without leaking secrets (keys, full headers, etc.).
       console.log(`❌ DEBUG: API request failed`)
       console.log(`🔍 DEBUG: Response body:`, responseText)
 

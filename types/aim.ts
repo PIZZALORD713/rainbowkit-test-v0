@@ -1,3 +1,8 @@
+/** Minimal AIM/CMP shape persisted locally.
+ * Align this with the emerging CMP schema when available.
+ * Required fields: id, characterName, createdAt.
+ * Others can evolve without breaking older files.
+ */
 export interface AIMFile {
   id: string
   oraNumber: string

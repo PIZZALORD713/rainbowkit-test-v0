@@ -1,3 +1,4 @@
+// Collector dashboard: resolve ENS → fetch Oras (/api/chatgpt/oras) → grid → inline AIM actions.
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
@@ -61,6 +62,7 @@ export default function SugartownOraDashboard() {
     }
   }, [isConnected, address])
 
+  // Accept ENS or address. Consider debouncing + caching in sessionStorage.
   const handleSearch = async (walletToSearch?: string) => {
     const targetWallet = walletToSearch || searchQuery.trim()
 

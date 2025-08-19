@@ -1,3 +1,5 @@
+// Drag-and-drop JSON importer for AIM files.
+// Validates shape and prevents silent overwrites unless confirmed.
 "use client"
 
 import type React from "react"
@@ -34,7 +36,8 @@ export function ImportAIMModal({ open, onClose, onImportSuccess }: ImportAIMModa
     }
   }
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = (e) => {
+    // Restrict to .json/.aim; reject huge files (>2MB) to avoid UI freezes.
     e.preventDefault()
     e.stopPropagation()
     setDragActive(false)
