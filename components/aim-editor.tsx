@@ -1,9 +1,9 @@
-// High-level editor for one AIMFile.
-// Sections: Identity, Personality, Backstory, Abilities, Behavior, Goals, etc.
-// Keep each section independently controlled to avoid clobbering partial edits.
+// High-level editor for AIM v2 files.
+// Split UI: read-only "NFT Traits (Locked)" section and editable "Persona" section
+// Enforces that persona.traitsAdd cannot override canonical.traits
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,13 +12,17 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Slider } from "@/components/ui/slider"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Plus, X, Save, Download, Upload, User, Brain, BookOpen, Zap, Users, Target, Clock } from "lucide-react"
-import type { AIMFile } from "@/types/aim"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Plus, X, Save, Download, Upload, Lock, User, BookOpen, Target, AlertTriangle, Sparkles } from "lucide-react"
+import type { AIMv2, AIMFile, AIMFileOrV2 } from "@/types/aim"
+import { createEmptyAIMv2 } from "@/types/aim-v2"
 import { AIMStorage } from "@/lib/aim-storage"
+import { AIMMigration } from "@/lib/aim-migration"
 import { ImportAIMModal } from "@/components/import-aim-modal"
+import { isAIMv2 } from "@/types/aim" // Added import for isAIMv2
 
 interface AIMEditorProps {
   oraNumber: string
@@ -29,91 +33,68 @@ interface AIMEditorProps {
 }
 
 export function AIMEditor({ oraNumber, oraName, oraImage, onClose, onSave }: AIMEditorProps) {
-  const [aimFile, setAimFile] = useState<AIMFile>(() => {
-    const existing = AIMStorage.getByOraNumber(oraNumber)
-    if (existing) return existing
+  const [aimFile, setAimFile] = useState<AIMv2>(() => {
+    // Try to get existing v2 file first
+    const existingV2 = AIMStorage.getV2BySubject("ethereum", "unknown", oraNumber)
+    if (existingV2) return existingV2
 
-    // Create new AIM file
-    return {
-      id: `aim-${oraNumber}-${Date.now()}`,
-      oraNumber,
-      oraName,
-      oraImage,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      characterName: oraName,
-      personality: {
-        primaryTraits: [],
-        secondaryTraits: [],
-        alignment: "True Neutral",
-        temperament: "",
-        motivations: [],
-        fears: [],
-        quirks: [],
-      },
-      backstory: {
-        origin: "",
-        childhood: "",
-        formativeEvents: [],
-        relationships: [],
-        achievements: [],
-        failures: [],
-      },
-      abilities: {
-        strengths: [],
-        weaknesses: [],
-        specialPowers: [],
-        skills: [],
-      },
-      behavior: {
-        speechPatterns: "",
-        mannerisms: [],
-        habits: [],
-        socialStyle: "Ambivert",
-        conflictResolution: "",
-        decisionMaking: "",
-      },
-      appearance: {
-        distinctiveFeatures: [],
-        clothing: "",
-        accessories: [],
-      },
-      goals: {
-        shortTerm: [],
-        longTerm: [],
-        dreams: [],
-      },
-      tags: [],
-      notes: "",
-      version: "1",
+    // Check for legacy v1 file and migrate
+    const existingV1 = AIMStorage.getByOraNumber(oraNumber)
+    if (existingV1) {
+      const migrationResult = AIMMigration.migrateV1ToV2(existingV1, {
+        preserveOriginalId: false,
+        defaultChain: "ethereum",
+        defaultContract: "unknown",
+      })
+      if (migrationResult.success && migrationResult.aimv2) {
+        return migrationResult.aimv2
+      }
     }
+
+    // Create new AIM v2 file
+    const newFile = createEmptyAIMv2(`aim-v2-${oraNumber}-${Date.now()}`)
+    newFile.subject = {
+      chain: "ethereum",
+      contract: "unknown",
+      tokenId: oraNumber,
+      collectionName: oraName,
+    }
+    newFile.sources.image = oraImage
+    newFile.persona.title = oraName
+    return newFile
   })
 
-  const [activeTab, setActiveTab] = useState("identity")
-  const [newTrait, setNewTrait] = useState("")
-  const [newMotivation, setNewMotivation] = useState("")
-  const [newFear, setNewFear] = useState("")
-  const [newQuirk, setNewQuirk] = useState("")
-  const [braveryLevel, setBraveryLevel] = useState([5])
-  const [empathyLevel, setEmpathyLevel] = useState([5])
+  const [activeTab, setActiveTab] = useState("canonical")
+  const [newTraitKey, setNewTraitKey] = useState("")
+  const [newTraitValue, setNewTraitValue] = useState("")
+  const [newTag, setNewTag] = useState("")
+  const [traitConflictError, setTraitConflictError] = useState("")
   const [showImport, setShowImport] = useState(false)
 
+  useEffect(() => {
+    const conflicts = AIMMigration.validateTraitsAdd(aimFile.canonical.traits, aimFile.persona.traitsAdd)
+    if (conflicts.length > 0) {
+      setTraitConflictError(`Trait conflicts detected: ${conflicts.join(", ")}`)
+    } else {
+      setTraitConflictError("")
+    }
+  }, [aimFile.canonical.traits, aimFile.persona.traitsAdd])
+
   const handleSave = () => {
-    // Persist to localStorage and notify parent.
-    // If you add remote persistence, keep this the single side-effect boundary.
-    AIMStorage.save(aimFile)
+    const updatedFile = { ...aimFile, updatedAt: new Date().toISOString() }
+    AIMStorage.saveV2(updatedFile)
     onSave()
     onClose()
   }
 
   const handleExport = () => {
     try {
-      const jsonString = AIMStorage.export(aimFile.id)
+      const jsonString = AIMStorage.exportV2(aimFile.id)
       const blob = new Blob([jsonString], { type: "application/json" })
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `${aimFile.characterName}-AIM.aim`
+      a.download = `${aimFile.persona.title}-AIM-v2.json`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -123,75 +104,115 @@ export function AIMEditor({ oraNumber, oraName, oraImage, onClose, onSave }: AIM
     }
   }
 
-  const handleImportSuccess = (importedFile: AIMFile) => {
-    setAimFile(importedFile)
-    onSave() // Trigger refresh in parent component
+  const handleImportSuccess = (importedFile: AIMFileOrV2) => {
+    if (isAIMv2(importedFile)) {
+      setAimFile(importedFile)
+    } else {
+      // Migrate v1 to v2
+      const migrationResult = AIMMigration.migrateV1ToV2(importedFile as AIMFile)
+      if (migrationResult.success && migrationResult.aimv2) {
+        setAimFile(migrationResult.aimv2)
+      }
+    }
+    onSave()
   }
 
-  const addToArray = (field: string, value: string, section?: string) => {
+  const addPersonaTrait = () => {
+    if (!newTraitKey.trim() || !newTraitValue.trim()) return
+
+    const key = newTraitKey.trim().toLowerCase().replace(/\s+/g, "_")
+
+    // Check for conflicts with canonical traits
+    if (key in aimFile.canonical.traits) {
+      setTraitConflictError(`Cannot add "${key}" - conflicts with canonical trait`)
+      return
+    }
+
+    setAimFile((prev) => ({
+      ...prev,
+      persona: {
+        ...prev.persona,
+        traitsAdd: {
+          ...prev.persona.traitsAdd,
+          [key]: newTraitValue.trim(),
+        },
+      },
+    }))
+
+    setNewTraitKey("")
+    setNewTraitValue("")
+    setTraitConflictError("")
+  }
+
+  const removePersonaTrait = (key: string) => {
+    setAimFile((prev) => {
+      const updatedTraitsAdd = { ...prev.persona.traitsAdd }
+      delete updatedTraitsAdd[key]
+      return {
+        ...prev,
+        persona: {
+          ...prev.persona,
+          traitsAdd: updatedTraitsAdd,
+        },
+      }
+    })
+  }
+
+  const addToArray = (field: string, value: string) => {
     if (!value.trim()) return
 
-    setAimFile((prev) => {
-      const updated = { ...prev }
-      if (section) {
-        // @ts-ignore - Dynamic property access
-        updated[section][field] = [...updated[section][field], value.trim()]
-      } else {
-        // @ts-ignore - Dynamic property access
-        updated[field] = [...updated[field], value.trim()]
-      }
-      return updated
-    })
+    setAimFile((prev) => ({
+      ...prev,
+      persona: {
+        ...prev.persona,
+        [field]: [...(prev.persona[field] as string[]), value.trim()],
+      },
+    }))
   }
 
-  const removeFromArray = (field: string, index: number, section?: string) => {
-    setAimFile((prev) => {
-      const updated = { ...prev }
-      if (section) {
-        // @ts-ignore - Dynamic property access
-        updated[section][field] = updated[section][field].filter((_: any, i: number) => i !== index)
-      } else {
-        // @ts-ignore - Dynamic property access
-        updated[field] = updated[field].filter((_: any, i: number) => i !== index)
-      }
-      return updated
-    })
+  const removeFromArray = (field: string, index: number) => {
+    setAimFile((prev) => ({
+      ...prev,
+      persona: {
+        ...prev.persona,
+        [field]: (prev.persona[field] as string[]).filter((_, i) => i !== index),
+      },
+    }))
   }
 
   return (
-    <>
+    <TooltipProvider>
       <Dialog open={true} onOpenChange={onClose}>
         <DialogContent className="max-w-4xl max-h-[90vh] p-0">
           <DialogHeader className="p-6 pb-0">
             <DialogTitle className="text-2xl font-bold flex items-center gap-3">
-              <img src={oraImage || "/placeholder.svg"} alt={oraName} className="w-12 h-12 rounded-lg object-cover" />
-              AIM Editor - {aimFile.characterName}
+              <img
+                src={aimFile.sources.image || "/placeholder.svg"}
+                alt={aimFile.persona.title}
+                className="w-12 h-12 rounded-lg object-cover"
+              />
+              AIM v2 Editor - {aimFile.persona.title}
+              <Badge variant="secondary" className="ml-2">
+                v2
+              </Badge>
             </DialogTitle>
           </DialogHeader>
 
           <div className="flex-1 overflow-hidden">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
               <div className="px-6">
-                <TabsList className="grid w-full grid-cols-6">
-                  <TabsTrigger value="identity" className="flex items-center gap-1">
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="canonical" className="flex items-center gap-1">
+                    <Lock className="w-4 h-4" />
+                    <span className="hidden sm:inline">NFT Traits</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="persona" className="flex items-center gap-1">
                     <User className="w-4 h-4" />
-                    <span className="hidden sm:inline">Identity</span>
+                    <span className="hidden sm:inline">Persona</span>
                   </TabsTrigger>
-                  <TabsTrigger value="personality" className="flex items-center gap-1">
-                    <Brain className="w-4 h-4" />
-                    <span className="hidden sm:inline">Personality</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="backstory" className="flex items-center gap-1">
+                  <TabsTrigger value="lore" className="flex items-center gap-1">
                     <BookOpen className="w-4 h-4" />
-                    <span className="hidden sm:inline">Backstory</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="abilities" className="flex items-center gap-1">
-                    <Zap className="w-4 h-4" />
-                    <span className="hidden sm:inline">Abilities</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="behavior" className="flex items-center gap-1">
-                    <Users className="w-4 h-4" />
-                    <span className="hidden sm:inline">Behavior</span>
+                    <span className="hidden sm:inline">Lore</span>
                   </TabsTrigger>
                   <TabsTrigger value="goals" className="flex items-center gap-1">
                     <Target className="w-4 h-4" />
@@ -202,76 +223,139 @@ export function AIMEditor({ oraNumber, oraName, oraImage, onClose, onSave }: AIM
 
               <ScrollArea className="flex-1 px-6">
                 <div className="pb-6">
-                  <TabsContent value="identity" className="space-y-6 mt-6">
+                  <TabsContent value="canonical" className="space-y-6 mt-6">
                     <Card>
                       <CardHeader>
-                        <CardTitle>Core Identity</CardTitle>
+                        <CardTitle className="flex items-center gap-2">
+                          <Lock className="w-5 h-5 text-slate-500" />
+                          NFT Traits (Locked)
+                        </CardTitle>
+                        <p className="text-sm text-slate-600">
+                          These traits come from the NFT metadata and cannot be edited.
+                        </p>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {Object.keys(aimFile.canonical.traits).length === 0 ? (
+                          <div className="text-center py-8 text-slate-500">
+                            <p>No canonical traits available.</p>
+                            <p className="text-sm">Traits will appear here when NFT metadata is fetched.</p>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-4">
+                            {Object.entries(aimFile.canonical.traits).map(([key, value]) => (
+                              <div key={key} className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+                                <span className="font-medium capitalize">{key.replace(/_/g, " ")}</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-slate-600">{value}</span>
+                                  {aimFile.ui.crystallizedKeys.includes(key) && (
+                                    <Tooltip>
+                                      <TooltipTrigger>
+                                        <Sparkles className="w-4 h-4 text-amber-500" />
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Crystallized trait - highlighted as important</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {aimFile.ui.crystallizedKeys.length > 0 && (
+                          <div>
+                            <Label className="text-sm font-medium">Crystallized Traits</Label>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {aimFile.ui.crystallizedKeys.map((key) => (
+                                <Badge key={key} className="bg-amber-100 text-amber-800">
+                                  <Sparkles className="w-3 h-3 mr-1" />
+                                  {key.replace(/_/g, " ")}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>NFT Information</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <Label htmlFor="characterName">Character Name</Label>
-                            <Input
-                              id="characterName"
-                              value={aimFile.characterName}
-                              onChange={(e) => setAimFile((prev) => ({ ...prev, characterName: e.target.value }))}
-                              placeholder="Enter character name..."
-                            />
+                            <Label>Collection</Label>
+                            <p className="text-sm text-slate-600">{aimFile.subject.collectionName}</p>
                           </div>
                           <div>
-                            <Label htmlFor="nickname">Nickname</Label>
-                            <Input
-                              id="nickname"
-                              value={aimFile.nickname || ""}
-                              onChange={(e) => setAimFile((prev) => ({ ...prev, nickname: e.target.value }))}
-                              placeholder="Enter nickname..."
-                            />
+                            <Label>Token ID</Label>
+                            <p className="text-sm text-slate-600">{aimFile.subject.tokenId}</p>
                           </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <Label htmlFor="age">Age</Label>
-                            <Input
-                              id="age"
-                              type="number"
-                              value={aimFile.age || ""}
-                              onChange={(e) =>
-                                setAimFile((prev) => ({
-                                  ...prev,
-                                  age: e.target.value ? Number(e.target.value) : undefined,
-                                }))
-                              }
-                              placeholder="Enter age..."
-                            />
+                            <Label>Chain</Label>
+                            <p className="text-sm text-slate-600 capitalize">{aimFile.subject.chain}</p>
                           </div>
                           <div>
-                            <Label htmlFor="species">Species</Label>
-                            <Input
-                              id="species"
-                              value={aimFile.species || ""}
-                              onChange={(e) => setAimFile((prev) => ({ ...prev, species: e.target.value }))}
-                              placeholder="Enter species..."
-                            />
+                            <Label>Contract</Label>
+                            <p className="text-sm text-slate-600 font-mono text-xs">{aimFile.subject.contract}</p>
                           </div>
                         </div>
                       </CardContent>
                     </Card>
                   </TabsContent>
 
-                  <TabsContent value="personality" className="space-y-6 mt-6">
+                  <TabsContent value="persona" className="space-y-6 mt-6">
                     <Card>
                       <CardHeader>
-                        <CardTitle>Personality Matrix</CardTitle>
+                        <CardTitle>Character Persona</CardTitle>
+                        <p className="text-sm text-slate-600">
+                          Customize your character's personality and additional traits.
+                        </p>
                       </CardHeader>
-                      <CardContent className="space-y-6">
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="title">Character Title</Label>
+                            <Input
+                              id="title"
+                              value={aimFile.persona.title}
+                              onChange={(e) =>
+                                setAimFile((prev) => ({
+                                  ...prev,
+                                  persona: { ...prev.persona, title: e.target.value },
+                                }))
+                              }
+                              placeholder="Enter character title..."
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="nickname">Nickname</Label>
+                            <Input
+                              id="nickname"
+                              value={aimFile.persona.nickname || ""}
+                              onChange={(e) =>
+                                setAimFile((prev) => ({
+                                  ...prev,
+                                  persona: { ...prev.persona, nickname: e.target.value },
+                                }))
+                              }
+                              placeholder="Enter nickname..."
+                            />
+                          </div>
+                        </div>
+
                         <div>
                           <Label htmlFor="alignment">Alignment</Label>
                           <Select
-                            value={aimFile.personality.alignment}
+                            value={aimFile.persona.alignment || "True Neutral"}
                             onValueChange={(value) =>
                               setAimFile((prev) => ({
                                 ...prev,
-                                personality: { ...prev.personality, alignment: value as any },
+                                persona: { ...prev.persona, alignment: value as any },
                               }))
                             }
                           >
@@ -293,84 +377,39 @@ export function AIMEditor({ oraNumber, oraName, oraImage, onClose, onSave }: AIM
                         </div>
 
                         <div>
-                          <Label htmlFor="temperament">Temperament</Label>
+                          <Label htmlFor="tone">Personality Tone</Label>
                           <Textarea
-                            id="temperament"
-                            value={aimFile.personality.temperament}
+                            id="tone"
+                            value={aimFile.persona.tone}
                             onChange={(e) =>
                               setAimFile((prev) => ({
                                 ...prev,
-                                personality: { ...prev.personality, temperament: e.target.value },
+                                persona: { ...prev.persona, tone: e.target.value },
                               }))
                             }
-                            placeholder="Describe their overall temperament and demeanor..."
+                            placeholder="Describe their overall personality and temperament..."
                             rows={3}
                           />
                         </div>
 
-                        <div className="space-y-4">
-                          <h4 className="font-semibold">Personality Axes</h4>
-                          <div className="space-y-4">
-                            <div>
-                              <Label>Bravery ↔ Caution</Label>
-                              <div className="px-3 py-2">
-                                <Slider
-                                  value={braveryLevel}
-                                  onValueChange={setBraveryLevel}
-                                  max={10}
-                                  min={1}
-                                  step={1}
-                                  className="w-full"
-                                />
-                                <div className="flex justify-between text-xs text-slate-500 mt-1">
-                                  <span>Cautious</span>
-                                  <span>Balanced</span>
-                                  <span>Brave</span>
-                                </div>
-                              </div>
-                            </div>
-                            <div>
-                              <Label>Empathy ↔ Logic</Label>
-                              <div className="px-3 py-2">
-                                <Slider
-                                  value={empathyLevel}
-                                  onValueChange={setEmpathyLevel}
-                                  max={10}
-                                  min={1}
-                                  step={1}
-                                  className="w-full"
-                                />
-                                <div className="flex justify-between text-xs text-slate-500 mt-1">
-                                  <span>Logical</span>
-                                  <span>Balanced</span>
-                                  <span>Empathetic</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="text-sm text-slate-500 bg-slate-50 p-3 rounded-lg">
-                            <p>📊 Radar chart coming soon - visualize all personality dimensions at once!</p>
-                          </div>
-                        </div>
-
                         <div>
-                          <Label>Primary Traits</Label>
+                          <Label>Tags</Label>
                           <div className="flex gap-2 mb-2">
                             <Input
-                              value={newTrait}
-                              onChange={(e) => setNewTrait(e.target.value)}
-                              placeholder="Add a primary trait..."
+                              value={newTag}
+                              onChange={(e) => setNewTag(e.target.value)}
+                              placeholder="Add a tag..."
                               onKeyPress={(e) => {
                                 if (e.key === "Enter") {
-                                  addToArray("primaryTraits", newTrait, "personality")
-                                  setNewTrait("")
+                                  addToArray("tags", newTag)
+                                  setNewTag("")
                                 }
                               }}
                             />
                             <Button
                               onClick={() => {
-                                addToArray("primaryTraits", newTrait, "personality")
-                                setNewTrait("")
+                                addToArray("tags", newTag)
+                                setNewTag("")
                               }}
                               size="sm"
                             >
@@ -378,11 +417,11 @@ export function AIMEditor({ oraNumber, oraName, oraImage, onClose, onSave }: AIM
                             </Button>
                           </div>
                           <div className="flex flex-wrap gap-2">
-                            {aimFile.personality.primaryTraits.map((trait, index) => (
-                              <Badge key={index} className="bg-indigo-100 text-indigo-800">
-                                {trait}
+                            {aimFile.persona.tags.map((tag, index) => (
+                              <Badge key={index} className="bg-blue-100 text-blue-800">
+                                {tag}
                                 <button
-                                  onClick={() => removeFromArray("primaryTraits", index, "personality")}
+                                  onClick={() => removeFromArray("tags", index)}
                                   className="ml-2 hover:text-red-600"
                                 >
                                   <X className="w-3 h-3" />
@@ -393,124 +432,88 @@ export function AIMEditor({ oraNumber, oraName, oraImage, onClose, onSave }: AIM
                         </div>
                       </CardContent>
                     </Card>
-                  </TabsContent>
 
-                  <TabsContent value="backstory" className="space-y-6 mt-6">
                     <Card>
                       <CardHeader>
-                        <CardTitle>Background & History</CardTitle>
+                        <CardTitle>Additional Traits</CardTitle>
+                        <p className="text-sm text-slate-600">
+                          Add custom traits that don't conflict with canonical NFT traits.
+                        </p>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        <div>
-                          <Label htmlFor="origin">Origin Story</Label>
-                          <Textarea
-                            id="origin"
-                            value={aimFile.backstory.origin}
-                            onChange={(e) =>
-                              setAimFile((prev) => ({
-                                ...prev,
-                                backstory: { ...prev.backstory, origin: e.target.value },
-                              }))
-                            }
-                            placeholder="Enter a brief origin story here..."
-                            rows={4}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="childhood">Childhood & Early Life</Label>
-                          <Textarea
-                            id="childhood"
-                            value={aimFile.backstory.childhood}
-                            onChange={(e) =>
-                              setAimFile((prev) => ({
-                                ...prev,
-                                backstory: { ...prev.backstory, childhood: e.target.value },
-                              }))
-                            }
-                            placeholder="Describe their childhood and formative years..."
-                            rows={4}
-                          />
-                        </div>
-                      </CardContent>
-                    </Card>
+                        {traitConflictError && (
+                          <Alert>
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertDescription>{traitConflictError}</AlertDescription>
+                          </Alert>
+                        )}
 
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <Clock className="w-5 h-5 text-slate-500" />
-                          Memory Timeline (Coming Soon)
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-center py-8 text-slate-500">
-                          <p className="mb-4">Add significant moments in your Ora's story</p>
-                          <Button disabled variant="outline">
-                            Add Memory Event
+                        <div className="flex gap-2">
+                          <Input
+                            value={newTraitKey}
+                            onChange={(e) => setNewTraitKey(e.target.value)}
+                            placeholder="Trait name..."
+                            className="flex-1"
+                          />
+                          <Input
+                            value={newTraitValue}
+                            onChange={(e) => setNewTraitValue(e.target.value)}
+                            placeholder="Trait value..."
+                            className="flex-1"
+                            onKeyPress={(e) => {
+                              if (e.key === "Enter") {
+                                addPersonaTrait()
+                              }
+                            }}
+                          />
+                          <Button onClick={addPersonaTrait} size="sm">
+                            <Plus className="w-4 h-4" />
                           </Button>
                         </div>
+
+                        {Object.keys(aimFile.persona.traitsAdd).length > 0 && (
+                          <div className="grid grid-cols-2 gap-4">
+                            {Object.entries(aimFile.persona.traitsAdd).map(([key, value]) => (
+                              <div key={key} className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                                <span className="font-medium capitalize">{key.replace(/_/g, " ")}</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-slate-600">{value}</span>
+                                  <button
+                                    onClick={() => removePersonaTrait(key)}
+                                    className="text-red-500 hover:text-red-700"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   </TabsContent>
 
-                  <TabsContent value="abilities" className="space-y-6 mt-6">
+                  <TabsContent value="lore" className="space-y-6 mt-6">
                     <Card>
                       <CardHeader>
-                        <CardTitle>Abilities & Skills</CardTitle>
+                        <CardTitle>Character Lore</CardTitle>
                       </CardHeader>
-                      <CardContent className="space-y-4">
+                      <CardContent>
                         <div>
-                          <Label>Strengths</Label>
-                          <Textarea placeholder="List their key strengths and abilities..." rows={3} />
-                        </div>
-                        <div>
-                          <Label>Weaknesses</Label>
-                          <Textarea placeholder="What are their limitations or vulnerabilities..." rows={3} />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-
-                  <TabsContent value="behavior" className="space-y-6 mt-6">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Behavioral Patterns</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div>
-                          <Label htmlFor="speechPatterns">Speech Patterns</Label>
+                          <Label htmlFor="lore">Backstory & Lore</Label>
                           <Textarea
-                            id="speechPatterns"
-                            value={aimFile.behavior.speechPatterns}
+                            id="lore"
+                            value={aimFile.persona.lore}
                             onChange={(e) =>
                               setAimFile((prev) => ({
                                 ...prev,
-                                behavior: { ...prev.behavior, speechPatterns: e.target.value },
+                                persona: { ...prev.persona, lore: e.target.value },
                               }))
                             }
-                            placeholder="How do they speak? Any unique phrases or patterns..."
-                            rows={3}
+                            placeholder="Write your character's backstory, history, and lore..."
+                            rows={8}
+                            className="mt-2"
                           />
-                        </div>
-                        <div>
-                          <Label htmlFor="socialStyle">Social Style</Label>
-                          <Select
-                            value={aimFile.behavior.socialStyle}
-                            onValueChange={(value) =>
-                              setAimFile((prev) => ({
-                                ...prev,
-                                behavior: { ...prev.behavior, socialStyle: value as any },
-                              }))
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Extroverted">Extroverted</SelectItem>
-                              <SelectItem value="Introverted">Introverted</SelectItem>
-                              <SelectItem value="Ambivert">Ambivert</SelectItem>
-                            </SelectContent>
-                          </Select>
                         </div>
                       </CardContent>
                     </Card>
@@ -526,11 +529,14 @@ export function AIMEditor({ oraNumber, oraName, oraImage, onClose, onSave }: AIM
                           <Label htmlFor="currentQuest">Current Quest</Label>
                           <Input
                             id="currentQuest"
-                            value={aimFile.goals.currentQuest || ""}
+                            value={aimFile.persona.goals.currentQuest || ""}
                             onChange={(e) =>
                               setAimFile((prev) => ({
                                 ...prev,
-                                goals: { ...prev.goals, currentQuest: e.target.value },
+                                persona: {
+                                  ...prev.persona,
+                                  goals: { ...prev.persona.goals, currentQuest: e.target.value },
+                                },
                               }))
                             }
                             placeholder="What are they currently focused on..."
@@ -538,11 +544,63 @@ export function AIMEditor({ oraNumber, oraName, oraImage, onClose, onSave }: AIM
                         </div>
                         <div>
                           <Label>Short-term Goals</Label>
-                          <Textarea placeholder="What do they want to achieve soon..." rows={3} />
+                          <Textarea
+                            value={aimFile.persona.goals.shortTerm.join("\n")}
+                            onChange={(e) =>
+                              setAimFile((prev) => ({
+                                ...prev,
+                                persona: {
+                                  ...prev.persona,
+                                  goals: {
+                                    ...prev.persona.goals,
+                                    shortTerm: e.target.value.split("\n").filter((g) => g.trim()),
+                                  },
+                                },
+                              }))
+                            }
+                            placeholder="Enter short-term goals (one per line)..."
+                            rows={3}
+                          />
                         </div>
                         <div>
                           <Label>Long-term Dreams</Label>
-                          <Textarea placeholder="Their ultimate aspirations and dreams..." rows={3} />
+                          <Textarea
+                            value={aimFile.persona.goals.longTerm.join("\n")}
+                            onChange={(e) =>
+                              setAimFile((prev) => ({
+                                ...prev,
+                                persona: {
+                                  ...prev.persona,
+                                  goals: {
+                                    ...prev.persona.goals,
+                                    longTerm: e.target.value.split("\n").filter((g) => g.trim()),
+                                  },
+                                },
+                              }))
+                            }
+                            placeholder="Enter long-term goals (one per line)..."
+                            rows={3}
+                          />
+                        </div>
+                        <div>
+                          <Label>Ultimate Dreams</Label>
+                          <Textarea
+                            value={aimFile.persona.goals.dreams.join("\n")}
+                            onChange={(e) =>
+                              setAimFile((prev) => ({
+                                ...prev,
+                                persona: {
+                                  ...prev.persona,
+                                  goals: {
+                                    ...prev.persona.goals,
+                                    dreams: e.target.value.split("\n").filter((g) => g.trim()),
+                                  },
+                                },
+                              }))
+                            }
+                            placeholder="Enter ultimate dreams and aspirations (one per line)..."
+                            rows={3}
+                          />
                         </div>
                       </CardContent>
                     </Card>
@@ -556,7 +614,7 @@ export function AIMEditor({ oraNumber, oraName, oraImage, onClose, onSave }: AIM
             <div className="flex gap-2">
               <Button variant="outline" onClick={handleExport}>
                 <Download className="w-4 h-4 mr-2" />
-                Export AIM (.aim)
+                Export AIM v2
               </Button>
               <Button variant="outline" onClick={() => setShowImport(true)}>
                 <Upload className="w-4 h-4 mr-2" />
@@ -569,7 +627,7 @@ export function AIMEditor({ oraNumber, oraName, oraImage, onClose, onSave }: AIM
               </Button>
               <Button onClick={handleSave}>
                 <Save className="w-4 h-4 mr-2" />
-                Save AIM
+                Save AIM v2
               </Button>
             </div>
           </div>
@@ -577,6 +635,6 @@ export function AIMEditor({ oraNumber, oraName, oraImage, onClose, onSave }: AIM
       </Dialog>
 
       <ImportAIMModal open={showImport} onClose={() => setShowImport(false)} onImportSuccess={handleImportSuccess} />
-    </>
+    </TooltipProvider>
   )
 }

@@ -103,3 +103,14 @@ export interface AIMTemplate {
   category: string
   template: Partial<AIMFile>
 }
+
+import { AIMv2, isAIMv2, createEmptyAIMv2 } from "./aim-v2"
+
+// Re-export AIMv2 as the primary type
+export { AIMv2, isAIMv2, createEmptyAIMv2 }
+export type { AIMv2 as AIM } // Primary type alias
+
+// Keep AIMFile for backward compatibility
+export type { AIMFile }
+
+export type AIMFileOrV2 = AIMFile | AIMv2

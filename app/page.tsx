@@ -1,4 +1,3 @@
-// Collector dashboard: resolve ENS → fetch Oras (/api/chatgpt/oras) → grid → inline AIM actions.
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
@@ -9,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Wallet, ExternalLink, Sparkles, User, FileText, Eye, Settings, Copy, CheckCircle } from "lucide-react"
+import { Search, Wallet, Sparkles, User, FileText, Eye, Settings, Copy, CheckCircle } from "lucide-react"
 import { AIMEditor } from "@/components/aim-editor"
 import { AIMStorage } from "@/lib/aim-storage"
 import BulkEditModal from "@/components/bulk-edit-modal"
@@ -108,65 +107,79 @@ export default function SugartownOraDashboard() {
     try {
       const mcpData = {
         name: "sugartown-oras",
-        version: "1.0.0",
-        description: "Sugartown Ora collection with Avatar Identity Models",
+        version: "2.0.0", // Updated version for v2 support
+        description: "Sugartown Ora collection with Avatar Identity Models v2",
         characters: oras.map((ora) => {
-          const aimFile = AIMStorage.getByOraNumber(ora.oraNumber)
+          // Try v2 first, then v1
+          const aimV2File = AIMStorage.getV2BySubject("ethereum", "unknown", ora.oraNumber)
+          const aimV1File = AIMStorage.getByOraNumber(ora.oraNumber)
 
-          return {
-            id: ora.oraNumber,
-            name: aimFile?.characterName || ora.name,
-            description: aimFile?.backstory?.origin || `${ora.name} from the Sugartown collection`,
-            personality: aimFile?.personality || {
-              primaryTraits: [],
-              secondaryTraits: [],
-              alignment: "True Neutral",
-              temperament: "",
-              motivations: [],
-              fears: [],
-              quirks: [],
-            },
-            backstory: aimFile?.backstory || {
-              origin: "",
-              childhood: "",
-              formativeEvents: [],
-              relationships: [],
-              achievements: [],
-              failures: [],
-            },
-            abilities: aimFile?.abilities || {
-              strengths: [],
-              weaknesses: [],
-              specialPowers: [],
-              skills: [],
-            },
-            behavior: aimFile?.behavior || {
-              speechPatterns: "",
-              mannerisms: [],
-              habits: [],
-              socialStyle: "Ambivert",
-              conflictResolution: "",
-              decisionMaking: "",
-            },
-            appearance: {
-              ...aimFile?.appearance,
-              nftImage: ora.image,
-              traits: ora.traits,
-            },
-            goals: aimFile?.goals || {
-              shortTerm: [],
-              longTerm: [],
-              dreams: [],
-              currentQuest: "",
-            },
-            metadata: {
-              oraNumber: ora.oraNumber,
-              openseaUrl: ora.openseaUrl,
-              hasAIM: !!aimFile,
-              createdAt: aimFile?.createdAt,
-              updatedAt: aimFile?.updatedAt,
-              version: aimFile?.version || "1",
-            },
+          if (aimV2File) {
+            return {
+              id: ora.oraNumber,
+              name: aimV2File.persona.title,
+              description: aimV2File.persona.lore || `${aimV2File.persona.title} from the Sugartown collection`,
+              version: "aim-2",
+              canonical: aimV2File.canonical,
+              persona: aimV2File.persona,
+              ui: aimV2File.ui,
+              metadata: {
+                oraNumber: ora.oraNumber,
+                openseaUrl: ora.openseaUrl,
+                hasAIM: true,
+                aimVersion: "v2",
+                createdAt: aimV2File.createdAt,
+                updatedAt: aimV2File.updatedAt,
+                crystallizedTraits: aimV2File.ui.crystallizedKeys,
+              },
+              nftData: {
+                image: ora.image,
+                traits: ora.traits,
+              },
+            }
+          } else if (aimV1File) {
+            return {
+              id: ora.oraNumber,
+              name: aimV1File.characterName,
+              description: aimV1File.backstory?.origin || `${aimV1File.characterName} from the Sugartown collection`,
+              version: "aim-1",
+              personality: aimV1File.personality,
+              backstory: aimV1File.backstory,
+              abilities: aimV1File.abilities,
+              behavior: aimV1File.behavior,
+              appearance: {
+                ...aimV1File.appearance,
+                nftImage: ora.image,
+                traits: ora.traits,
+              },
+              goals: aimV1File.goals,
+              metadata: {
+                oraNumber: ora.oraNumber,
+                openseaUrl: ora.openseaUrl,
+                hasAIM: true,
+                aimVersion: "v1",
+                createdAt: aimV1File.createdAt,
+                updatedAt: aimV1File.updatedAt,
+                version: aimV1File.version,
+              },
+            }
+          } else {
+            return {
+              id: ora.oraNumber,
+              name: ora.name,
+              description: `${ora.name} from the Sugartown collection`,
+              version: "none",
+              metadata: {
+                oraNumber: ora.oraNumber,
+                openseaUrl: ora.openseaUrl,
+                hasAIM: false,
+                aimVersion: "none",
+              },
+              nftData: {
+                image: ora.image,
+                traits: ora.traits,
+              },
+            }
           }
         }),
       }
@@ -210,25 +223,51 @@ export default function SugartownOraDashboard() {
 
   const getDisplayName = useCallback(
     (ora: Ora) => {
-      const aimFile = AIMStorage.getByOraNumber(ora.oraNumber)
-      return aimFile?.characterName || ora.name
+      // Try v2 first
+      const aimV2File = AIMStorage.getV2BySubject("ethereum", "unknown", ora.oraNumber)
+      if (aimV2File) return aimV2File.persona.title
+
+      // Fallback to v1
+      const aimV1File = AIMStorage.getByOraNumber(ora.oraNumber)
+      return aimV1File?.characterName || ora.name
     },
     [aimRefreshTrigger],
   )
 
   const hasAIMFile = useCallback(
     (oraNumber: string) => {
-      return AIMStorage.getByOraNumber(oraNumber) !== null
+      const hasV2 = AIMStorage.getV2BySubject("ethereum", "unknown", oraNumber) !== null
+      const hasV1 = AIMStorage.getByOraNumber(oraNumber) !== null
+      return hasV2 || hasV1
     },
     [aimRefreshTrigger],
   )
 
-  const aimFileCount = AIMStorage.getAll().length + aimRefreshTrigger * 0 // Trigger recalculation
+  const aimFileCountV2 = AIMStorage.getAllV2().length
+  const aimFileCountV1 = AIMStorage.getAll().length
+  const aimFileCount = aimFileCountV1 + aimFileCountV2 + aimRefreshTrigger * 0
 
-  const handleAIMSave = useCallback(() => {
-    console.log("AIM file saved successfully")
-    setAimRefreshTrigger((prev) => prev + 1) // Trigger re-render to show updated names
-  }, [])
+  const getCrystallizedTraits = useCallback(
+    (ora: Ora) => {
+      const aimV2File = AIMStorage.getV2BySubject("ethereum", "unknown", ora.oraNumber)
+      if (aimV2File && aimV2File.ui.crystallizedKeys.length > 0) {
+        return aimV2File.ui.crystallizedKeys.map((key) => ({
+          key,
+          value: aimV2File.canonical.traits[key] || aimV2File.persona.traitsAdd[key] || "Unknown",
+        }))
+      }
+      return []
+    },
+    [aimRefreshTrigger],
+  )
+
+  const getAIMVersion = useCallback(
+    (oraNumber: string) => {
+      const hasV2 = AIMStorage.getV2BySubject("ethereum", "unknown", oraNumber) !== null
+      return hasV2 ? "v2" : "v1"
+    },
+    [aimRefreshTrigger],
+  )
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -242,7 +281,7 @@ export default function SugartownOraDashboard() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-slate-900">OraKit</h1>
-                <p className="text-sm text-slate-600">Avatar Identity Model</p>
+                <p className="text-sm text-slate-600">Avatar Identity Model v2</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -281,7 +320,8 @@ export default function SugartownOraDashboard() {
             Discover Your Ora Collection and Define Your Avatar Identity Model
           </h2>
           <p className="text-xl text-slate-600 mb-4 max-w-3xl mx-auto leading-relaxed">
-            AIM is the soul of your Ora — craft personality, backstory, goals and behaviour in one place.
+            AIM v2 is the soul of your Ora — craft personality, backstory, goals and behaviour with canonical NFT traits
+            and custom persona layers.
           </p>
           <p className="text-lg text-slate-500 mb-8 max-w-2xl mx-auto leading-relaxed">
             Explore your unique Sugartown Ora NFTs and create detailed character profiles with our Avatar Identity Model
@@ -454,92 +494,132 @@ export default function SugartownOraDashboard() {
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-              {oras.map((ora) => (
-                <Card
-                  key={ora.oraNumber}
-                  className="group overflow-hidden hover:shadow-2xl transition-all duration-500 border-slate-200/50 bg-white/70 backdrop-blur-sm hover:bg-white/90 hover:scale-[1.02] hover:-translate-y-1"
-                >
-                  {selectionMode && (
-                    <input
-                      type="checkbox"
-                      aria-label={`Select ${ora.name}`}
-                      checked={selectedOras.some((o) => o.oraNumber === ora.oraNumber)}
-                      onChange={(e) => {
-                        const checked = e.target.checked
-                        setSelectedOras((prev) =>
-                          checked ? [...prev, ora] : prev.filter((o) => o.oraNumber !== ora.oraNumber),
-                        )
-                      }}
-                      className="absolute top-3 left-3 z-20 w-5 h-5 text-indigo-600 bg-white border-2 border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 shadow-sm"
-                    />
-                  )}
+              {oras.map((ora) => {
+                const crystallizedTraits = getCrystallizedTraits(ora)
+                const aimVersion = getAIMVersion(ora.oraNumber)
 
-                  <div className="aspect-square relative overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200">
-                    <img
-                      src={ora.image || "/placeholder.svg?height=400&width=400&text=Ora"}
-                      alt={ora.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
-                    />
-                    {/* Gradient overlay for better text readability */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                return (
+                  <Card
+                    key={ora.oraNumber}
+                    className="group overflow-hidden hover:shadow-2xl transition-all duration-500 border-slate-200/50 bg-white/70 backdrop-blur-sm hover:bg-white/90 hover:scale-[1.02] hover:-translate-y-1"
+                  >
+                    {selectionMode && (
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${ora.name}`}
+                        checked={selectedOras.some((o) => o.oraNumber === ora.oraNumber)}
+                        onChange={(e) => {
+                          const checked = e.target.checked
+                          setSelectedOras((prev) =>
+                            checked ? [...prev, ora] : prev.filter((o) => o.oraNumber !== ora.oraNumber),
+                          )
+                        }}
+                        className="absolute top-3 left-3 z-20 w-5 h-5 text-indigo-600 bg-white border-2 border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                      />
+                    )}
 
-                    <div className="absolute top-4 right-4">
-                      <Badge className="bg-white/95 text-slate-800 font-bold text-sm px-3 py-1 shadow-lg backdrop-blur-sm">
-                        #{ora.oraNumber}
-                      </Badge>
-                    </div>
-                    {hasAIMFile(ora.oraNumber) && (
-                      <div className="absolute top-4 left-4">
-                        <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white font-bold text-sm px-3 py-1 shadow-lg">
-                          AIM ✓
+                    <div className="aspect-square relative overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200">
+                      <img
+                        src={ora.image || "/placeholder.svg?height=400&width=400&text=Ora"}
+                        alt={ora.name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+                      />
+                      {/* Gradient overlay for better text readability */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                      <div className="absolute top-4 right-4">
+                        <Badge className="bg-white/95 text-slate-800 font-bold text-sm px-3 py-1 shadow-lg backdrop-blur-sm">
+                          #{ora.oraNumber}
                         </Badge>
                       </div>
-                    )}
-                  </div>
-
-                  <CardHeader className="pb-4 pt-6">
-                    <CardTitle className="text-xl font-bold text-slate-900 group-hover:text-indigo-600 transition-colors duration-300 leading-tight">
-                      {getDisplayName(ora)}
-                    </CardTitle>
-                  </CardHeader>
-
-                  <CardContent className="pt-0 pb-6 space-y-5">
-                    {Object.keys(ora.traits).length > 0 && (
-                      <div className="space-y-3">
-                        <p className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Traits</p>
-                        <div className="space-y-2">
-                          {Object.entries(ora.traits)
-                            .slice(0, 3)
-                            .map(([key, value]) => (
-                              <div key={key} className="flex items-center justify-between py-1">
-                                <span className="text-xs font-medium text-slate-600 uppercase tracking-wide">
-                                  {key}
-                                </span>
-                                <Badge className={`text-xs font-medium ${getTraitColor(key)}`}>{value}</Badge>
-                              </div>
-                            ))}
-                          {Object.keys(ora.traits).length > 3 && (
-                            <div className="text-center pt-1">
-                              <Badge variant="outline" className="text-xs text-slate-500 border-slate-300">
-                                +{Object.keys(ora.traits).length - 3} more traits
-                              </Badge>
+                      {hasAIMFile(ora.oraNumber) && (
+                        <div className="absolute top-4 left-4 flex flex-col gap-2">
+                          <Badge
+                            className={`font-bold text-sm px-3 py-1 shadow-lg ${
+                              aimVersion === "v2"
+                                ? "bg-gradient-to-r from-emerald-500 to-green-500 text-white"
+                                : "bg-gradient-to-r from-blue-500 to-indigo-500 text-white"
+                            }`}
+                          >
+                            AIM {aimVersion} ✓
+                          </Badge>
+                          {crystallizedTraits.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {crystallizedTraits.slice(0, 2).map((trait) => (
+                                <Badge
+                                  key={trait.key}
+                                  className="bg-amber-500/90 text-white text-xs px-2 py-1 shadow-md backdrop-blur-sm"
+                                >
+                                  <Sparkles className="w-2 h-2 mr-1" />
+                                  {trait.key.replace(/_/g, " ")}
+                                </Badge>
+                              ))}
+                              {crystallizedTraits.length > 2 && (
+                                <Badge className="bg-amber-500/90 text-white text-xs px-2 py-1 shadow-md backdrop-blur-sm">
+                                  +{crystallizedTraits.length - 2}
+                                </Badge>
+                              )}
                             </div>
                           )}
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
 
-                    <div className={`space-y-3 pt-2 ${selectionMode ? "opacity-50 pointer-events-none" : ""}`}>
-                      {/* OpenSea button - secondary action */}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full flex items-center justify-center gap-2 h-10 bg-transparent hover:bg-slate-50 border-slate-300 hover:border-slate-400 text-slate-700 hover:text-slate-900 transition-all duration-200"
-                        onClick={() => window.open(ora.openseaUrl, "_blank")}
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        View on OpenSea
-                      </Button>
+                    <CardHeader className="pb-4 pt-6">
+                      <CardTitle className="text-xl font-bold text-slate-900 group-hover:text-indigo-600 transition-colors duration-300 leading-tight">
+                        {getDisplayName(ora)}
+                        {hasAIMFile(ora.oraNumber) && (
+                          <Badge variant="outline" className="ml-2 text-xs">
+                            {aimVersion}
+                          </Badge>
+                        )}
+                      </CardTitle>
+                    </CardHeader>
+
+                    <CardContent className="pt-0 pb-6 space-y-5">
+                      {Object.keys(ora.traits).length > 0 && (
+                        <div className="space-y-3">
+                          <p className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
+                            NFT Traits
+                            {crystallizedTraits.length > 0 && (
+                              <Badge variant="outline" className="ml-2 text-xs">
+                                {crystallizedTraits.length} crystallized
+                              </Badge>
+                            )}
+                          </p>
+                          <div className="space-y-2">
+                            {Object.entries(ora.traits)
+                              .slice(0, 3)
+                              .map(([key, value]) => {
+                                const isCrystallized = crystallizedTraits.some(
+                                  (t) => t.key === key.toLowerCase().replace(/\s+/g, "_"),
+                                )
+                                return (
+                                  <div key={key} className="flex items-center justify-between py-1">
+                                    <span className="text-xs font-medium text-slate-600 uppercase tracking-wide flex items-center gap-1">
+                                      {isCrystallized && <Sparkles className="w-3 h-3 text-amber-500" />}
+                                      {key}
+                                    </span>
+                                    <Badge
+                                      className={`text-xs font-medium ${getTraitColor(key)} ${
+                                        isCrystallized ? "ring-2 ring-amber-300" : ""
+                                      }`}
+                                    >
+                                      {value}
+                                    </Badge>
+                                  </div>
+                                )
+                              })}
+                            {Object.keys(ora.traits).length > 3 && (
+                              <div className="text-center pt-1">
+                                <Badge variant="outline" className="text-xs text-slate-500 border-slate-300">
+                                  +{Object.keys(ora.traits).length - 3} more traits
+                                </Badge>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Primary AIM actions */}
                       {hasAIMFile(ora.oraNumber) ? (
@@ -573,10 +653,10 @@ export default function SugartownOraDashboard() {
                           Create AIM Profile
                         </Button>
                       )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                )
+              })}
             </div>
           </div>
         )}
@@ -584,10 +664,10 @@ export default function SugartownOraDashboard() {
         {/* AIM Info Section */}
         <div className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg p-8 border border-slate-200/50">
           <div className="text-center mb-8">
-            <h3 className="text-3xl font-bold text-slate-900 mb-4">Avatar Identity Model (AIM)</h3>
+            <h3 className="text-3xl font-bold text-slate-900 mb-4">Avatar Identity Model v2 (AIM)</h3>
             <p className="text-slate-600 text-lg max-w-3xl mx-auto leading-relaxed">
-              Transform your Ora NFTs into rich, interactive characters with detailed personality profiles, backstories,
-              and behavioral traits using our advanced AIM system.
+              Transform your Ora NFTs into rich, interactive characters with structured canonical traits, custom persona
+              layers, and crystallized highlights using our advanced AIM v2 system.
             </p>
           </div>
 
@@ -596,10 +676,10 @@ export default function SugartownOraDashboard() {
               <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
                 <User className="w-8 h-8 text-white" />
               </div>
-              <h4 className="font-bold text-slate-900 mb-3 text-lg">Personality Matrix</h4>
+              <h4 className="font-bold text-slate-900 mb-3 text-lg">Canonical + Persona</h4>
               <p className="text-slate-600 leading-relaxed">
-                Define core personality traits, behavioral patterns, and psychological profiles that make each Ora
-                unique and memorable.
+                Separate locked NFT traits from editable persona customizations. Canonical traits from blockchain
+                metadata remain immutable while persona layers are fully customizable.
               </p>
             </div>
 
@@ -607,10 +687,10 @@ export default function SugartownOraDashboard() {
               <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
                 <FileText className="w-8 h-8 text-white" />
               </div>
-              <h4 className="font-bold text-slate-900 mb-3 text-lg">Rich Narratives</h4>
+              <h4 className="font-bold text-slate-900 mb-3 text-lg">Structured Data</h4>
               <p className="text-slate-600 leading-relaxed">
-                Create compelling backstories, origin tales, and character arcs that bring depth and meaning to your Ora
-                collection.
+                Organized data layers with sources, normalization, conflict detection, and UI configuration. Create
+                compelling backstories and character arcs with proper data management.
               </p>
             </div>
 
@@ -618,10 +698,10 @@ export default function SugartownOraDashboard() {
               <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
                 <Sparkles className="w-8 h-8 text-white" />
               </div>
-              <h4 className="font-bold text-slate-900 mb-3 text-lg">Interactive Traits</h4>
+              <h4 className="font-bold text-slate-900 mb-3 text-lg">Crystallized Traits</h4>
               <p className="text-slate-600 leading-relaxed">
-                Set dynamic behavioral patterns, interaction styles, and response mechanisms for immersive character
-                experiences.
+                Highlight important traits with crystallization. Visual indicators show which traits are most
+                significant to your character's identity and story.
               </p>
             </div>
           </div>
@@ -635,7 +715,7 @@ export default function SugartownOraDashboard() {
           oraName={selectedOra.name}
           oraImage={selectedOra.image}
           onClose={handleCloseAIMEditor}
-          onSave={handleAIMSave}
+          onSave={() => {}}
         />
       )}
 
