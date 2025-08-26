@@ -15,9 +15,8 @@
 
 import type React from "react"
 
-import { RainbowKitProvider, darkTheme, getDefaultConfig, connectorsForWallets } from "@rainbow-me/rainbowkit"
-import { injectedWallet, coinbaseWallet, safeWallet } from "@rainbow-me/rainbowkit/wallets"
-import { WagmiProvider, createConfig } from "wagmi"
+import { RainbowKitProvider, darkTheme, getDefaultConfig } from "@rainbow-me/rainbowkit"
+import { WagmiProvider } from "wagmi"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { http } from "viem"
 import { mainnet, base, polygon } from "wagmi/chains"
@@ -41,25 +40,13 @@ if (typeof window !== "undefined") {
   console.info(`[RainbowKit] Has valid project ID: ${hasValidProjectId}`)
 }
 
-const config = hasValidProjectId
-  ? getDefaultConfig({
-      appName: "Sugar Depot",
-      projectId: projectId!,
-      chains,
-      transports,
-      ssr: true,
-    })
-  : createConfig({
-      chains,
-      transports,
-      ssr: true,
-      connectors: connectorsForWallets([
-        {
-          groupName: "Basic",
-          wallets: [injectedWallet, coinbaseWallet({ appName: "Sugar Depot" }), safeWallet],
-        },
-      ]),
-    })
+const config = getDefaultConfig({
+  appName: "OraKit",
+  projectId: hasValidProjectId ? projectId! : "9ddc083da41f3648b5c2abcae265e0ce",
+  chains,
+  transports,
+  ssr: true,
+})
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -67,12 +54,12 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       <QueryClientProvider client={queryClient}>
         {/* modalSize keeps the connect UI compact; "coolMode" enables subtle motion.
     Tune these for OraKit's vibe to match the design system. */}
-<RainbowKitProvider 
-        theme={darkTheme({
-        accentColor: '#7b3fe4',
-        accentColorForeground: 'white',
-      })} 
-        modalSize="compact"
+        <RainbowKitProvider
+          theme={darkTheme({
+            accentColor: "#7b3fe4",
+            accentColorForeground: "white",
+          })}
+          modalSize="compact"
         >
           {children}
         </RainbowKitProvider>
