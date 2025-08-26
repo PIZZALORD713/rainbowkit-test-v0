@@ -164,7 +164,11 @@ export function AIMEditor({ oraNumber, oraName, oraImage, onClose, onSave }: AIM
         <DialogContent className="max-w-4xl max-h-[90vh] p-0">
           <DialogHeader className="p-6 pb-0">
             <DialogTitle className="text-2xl font-bold flex items-center gap-3">
-              <img src={oraImage || "/placeholder.svg"} alt={oraName} className="w-12 h-12 rounded-lg object-cover" />
+              <img
+                src={oraImage || "/placeholder.svg?height=48&width=48&text=Ora"}
+                alt={oraName}
+                className="w-12 h-12 rounded-lg object-cover"
+              />
               AIM Editor - {aimFile.characterName}
             </DialogTitle>
           </DialogHeader>

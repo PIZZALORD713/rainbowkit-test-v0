@@ -13,9 +13,9 @@ export default function CustomConnectButton() {
       <ConnectButton.Custom>
         {({ account, chain, openAccountModal, openChainModal, openConnectModal, authenticationStatus, mounted }) => {
           // When SSR/streaming, RainbowKit mounts client-side.
-// `ready` prevents flashing of wrong state on first paint.
+          // `ready` prevents flashing of wrong state on first paint.
 
-const ready = mounted && authenticationStatus !== "loading"
+          const ready = mounted && authenticationStatus !== "loading"
           const connected =
             ready && account && chain && (!authenticationStatus || authenticationStatus === "authenticated")
 
@@ -92,7 +92,7 @@ const ready = mounted && authenticationStatus !== "loading"
                           {chain.iconUrl && (
                             <img
                               alt={chain.name ?? "Chain icon"}
-                              src={chain.iconUrl || "/placeholder.svg"}
+                              src={chain.iconUrl || "/placeholder.svg?height=16&width=16&text=Chain"}
                               style={{ width: 16, height: 16 }}
                             />
                           )}

@@ -454,7 +454,7 @@ ${file.notes ? `## Additional Notes\n${file.notes}\n` : ""}
                         />
                         <div className="relative">
                           <img
-                            src={file.oraImage || "/placeholder.svg"}
+                            src={file.oraImage || "/placeholder.svg?height=56&width=56&text=Ora"}
                             alt={file.characterName}
                             className="w-14 h-14 rounded-xl object-cover shadow-md ring-2 ring-white group-hover:ring-indigo-200 transition-all duration-300"
                           />

@@ -171,7 +171,7 @@ export default function CharacterDetailPage() {
               </Button>
               <div className="flex items-center gap-3">
                 <img
-                  src={aimFile.oraImage || "/placeholder.svg"}
+                  src={aimFile.oraImage || "/placeholder.svg?height=48&width=48&text=Ora"}
                   alt={aimFile.characterName}
                   className="w-12 h-12 rounded-lg object-cover"
                 />
@@ -205,7 +205,7 @@ export default function CharacterDetailPage() {
               <CardContent className="p-6">
                 <div className="text-center mb-6">
                   <img
-                    src={aimFile.oraImage || "/placeholder.svg"}
+                    src={aimFile.oraImage || "/placeholder.svg?height=192&width=192&text=Ora"}
                     alt={aimFile.characterName}
                     className="w-48 h-48 rounded-2xl object-cover mx-auto mb-4 shadow-lg"
                   />
