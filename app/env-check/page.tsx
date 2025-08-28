@@ -1,4 +1,3 @@
-// Quick runtime check for required NEXT_PUBLIC_* variables on first deploy.
 export default function EnvCheck() {
   const pid = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || ""
   const masked = pid ? `${pid.slice(0, 8)}… (${pid.length} chars)` : "MISSING"

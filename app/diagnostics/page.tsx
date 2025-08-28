@@ -1,5 +1,3 @@
-// Dev-only page to detect CSS transform/perspective/filter on ancestors
-// that can break RainbowKit's portal positioning. Keep this out of production.
 "use client"
 
 import { useEffect, useState } from "react"

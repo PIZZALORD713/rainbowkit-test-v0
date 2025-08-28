@@ -1,5 +1,3 @@
-// Minimal gate for flows that require an active wallet connection.
-// Prefer this route over duplicating connection logic elsewhere.
 "use client"
 
 import { useConnectModal } from "@rainbow-me/rainbowkit"

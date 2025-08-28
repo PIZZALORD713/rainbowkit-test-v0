@@ -1,4 +1,3 @@
-// Collector dashboard: resolve ENS → fetch Oras (/api/chatgpt/oras) → grid → inline AIM actions.
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
@@ -13,6 +12,7 @@ import { Search, Wallet, ExternalLink, Sparkles, User, FileText, Eye, Settings, 
 import { AIMEditor } from "@/components/aim-editor"
 import { AIMStorage } from "@/lib/aim-storage"
 import BulkEditModal from "@/components/bulk-edit-modal"
+import HeroCarousel from "@/components/hero-carousel"
 import Link from "next/link"
 
 interface Ora {
@@ -62,7 +62,6 @@ export default function SugartownOraDashboard() {
     }
   }, [isConnected, address])
 
-  // Accept ENS or address. Consider debouncing + caching in sessionStorage.
   const handleSearch = async (walletToSearch?: string) => {
     const targetWallet = walletToSearch || searchQuery.trim()
 
@@ -230,6 +229,10 @@ export default function SugartownOraDashboard() {
     setAimRefreshTrigger((prev) => prev + 1) // Trigger re-render to show updated names
   }, [])
 
+  const handleScrollToSearch = () => {
+    document.getElementById("search-section")?.scrollIntoView({ behavior: "smooth" })
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Header */}
@@ -276,19 +279,19 @@ export default function SugartownOraDashboard() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Hero Section */}
-        <div className="text-center mb-12">
-          <h2 className="text-5xl font-bold text-slate-900 mb-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-            Discover Your Ora Collection and Define Your Avatar Identity Model
-          </h2>
-          <p className="text-xl text-slate-600 mb-4 max-w-3xl mx-auto leading-relaxed">
-            AIM is the soul of your Ora — craft personality, backstory, goals and behaviour in one place.
-          </p>
-          <p className="text-lg text-slate-500 mb-8 max-w-2xl mx-auto leading-relaxed">
-            Explore your unique Sugartown Ora NFTs and create detailed character profiles with our Avatar Identity Model
-            system.
-          </p>
+        <div className="mb-16">
+          <HeroCarousel onSearchClick={handleScrollToSearch} onConnectedWalletClick={handleSearchConnectedWallet} />
+        </div>
 
-          {/* Search Section */}
+        {/* Search Section */}
+        <div id="search-section" className="mb-12">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-slate-900 mb-4">Get Started with Your Collection</h2>
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+              Connect your wallet or search any address to explore Sugartown Oras and create Avatar Identity Models.
+            </p>
+          </div>
+
           <div className="max-w-3xl mx-auto">
             <Tabs defaultValue="search" className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-6">
@@ -582,7 +585,10 @@ export default function SugartownOraDashboard() {
         )}
 
         {/* AIM Info Section */}
-        <div className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg p-8 border border-slate-200/50">
+        <div
+          id="aim-info"
+          className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg p-8 border border-slate-200/50"
+        >
           <div className="text-center mb-8">
             <h3 className="text-3xl font-bold text-slate-900 mb-4">Avatar Identity Model (AIM)</h3>
             <p className="text-slate-600 text-lg max-w-3xl mx-auto leading-relaxed">

@@ -1,5 +1,3 @@
-// Local profile manager for saved AIM files.
-// Filter/sort/metrics are memoized to keep the list responsive.
 "use client"
 
 import { useState, useEffect } from "react"

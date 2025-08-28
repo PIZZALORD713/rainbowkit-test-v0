@@ -1,8 +1,3 @@
-/**
- * Standalone providers (outside App Router).
- * Use this only if you need Wagmi/RainbowKit in an isolated tree
- * (storybook, embedded widgets). Avoid wrapping the app twice.
- */
 "use client"
 
 import type React from "react"
@@ -33,8 +28,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        {/* Keep feature parity with /app/providers.tsx unless intentionally diverging. */}
-<RainbowKitProvider theme={customTheme} modalSize="compact">
+        <RainbowKitProvider theme={customTheme} modalSize="compact">
           {children}
         </RainbowKitProvider>
       </QueryClientProvider>
