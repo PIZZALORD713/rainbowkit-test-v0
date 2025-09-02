@@ -72,7 +72,7 @@ export default function SugartownOraDashboard() {
   const [copyStatus, setCopyStatus] = useState<"idle" | "copying" | "copied">("idle")
   const [showFilterPanel, setShowFilterPanel] = useState(false)
 
-  const { getFilteredOras, toggleFavorite, favorites } = useFilterStore()
+  const { getFilteredOras, toggleFavorite, isFavorite } = useFilterStore()
 
   useEffect(() => {
     if (isConnected && address && !loading && oras.length === 0) {
@@ -534,7 +534,7 @@ export default function SugartownOraDashboard() {
                       >
                         <Heart
                           className={`w-4 h-4 ${
-                            favorites.has(ora.oraNumber)
+                            isFavorite(ora.oraNumber)
                               ? "fill-red-500 text-red-500"
                               : "text-slate-600 hover:text-red-500"
                           } transition-colors`}

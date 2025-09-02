@@ -170,7 +170,13 @@ export const useFilterStore = create<FilterState>()(
 
       toggleFavorite: (oraId: string) =>
         set((state) => {
-          const newFavorites = new Set(state.favorites)
+          // Ensure favorites is a Set, convert from array if needed
+          const currentFavorites =
+            state.favorites instanceof Set
+              ? state.favorites
+              : new Set(Array.isArray(state.favorites) ? state.favorites : [])
+
+          const newFavorites = new Set(currentFavorites)
           if (newFavorites.has(oraId)) {
             newFavorites.delete(oraId)
           } else {
@@ -179,7 +185,14 @@ export const useFilterStore = create<FilterState>()(
           return { favorites: newFavorites }
         }),
 
-      isFavorite: (oraId: string) => get().favorites.has(oraId),
+      isFavorite: (oraId: string) => {
+        const state = get()
+        const currentFavorites =
+          state.favorites instanceof Set
+            ? state.favorites
+            : new Set(Array.isArray(state.favorites) ? state.favorites : [])
+        return currentFavorites.has(oraId)
+      },
     }),
     {
       name: "ora-filter-storage",
@@ -187,13 +200,28 @@ export const useFilterStore = create<FilterState>()(
       serialize: (state) =>
         JSON.stringify({
           ...state.state,
-          favorites: Array.from(state.state.favorites),
+          favorites: Array.from(state.state.favorites instanceof Set ? state.state.favorites : []),
         }),
       deserialize: (str) => {
-        const parsed = JSON.parse(str)
-        return {
-          ...parsed,
-          favorites: new Set(parsed.favorites || []),
+        try {
+          const parsed = JSON.parse(str)
+          return {
+            ...parsed,
+            favorites: new Set(Array.isArray(parsed.favorites) ? parsed.favorites : []),
+          }
+        } catch (error) {
+          // If deserialization fails, return default state
+          return {
+            searchQuery: "",
+            searchNumber: "",
+            minOraNumber: "",
+            maxOraNumber: "",
+            favoritesOnly: false,
+            showFavoritesOnly: false,
+            selectedTraits: {},
+            isFilterPanelOpen: false,
+            favorites: new Set<string>(),
+          }
         }
       },
     },
