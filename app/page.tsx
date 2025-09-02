@@ -8,11 +8,26 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Wallet, ExternalLink, Sparkles, User, FileText, Eye, Settings, Copy, CheckCircle } from "lucide-react"
+import {
+  Search,
+  Wallet,
+  ExternalLink,
+  Sparkles,
+  User,
+  FileText,
+  Eye,
+  Settings,
+  Copy,
+  CheckCircle,
+  Filter,
+  Heart,
+} from "lucide-react"
 import { AIMEditor } from "@/components/aim-editor"
 import { AIMStorage } from "@/lib/aim-storage"
 import BulkEditModal from "@/components/bulk-edit-modal"
 import HeroCarousel from "@/components/hero-carousel"
+import { FilterPanel } from "@/components/filter-panel"
+import { useFilterStore } from "@/lib/store"
 import Link from "next/link"
 
 interface Ora {
@@ -55,6 +70,9 @@ export default function SugartownOraDashboard() {
   const [showBulkModal, setShowBulkModal] = useState(false)
   const [aimRefreshTrigger, setAimRefreshTrigger] = useState(0)
   const [copyStatus, setCopyStatus] = useState<"idle" | "copying" | "copied">("idle")
+  const [showFilterPanel, setShowFilterPanel] = useState(false)
+
+  const { getFilteredOras, toggleFavorite, favorites } = useFilterStore()
 
   useEffect(() => {
     if (isConnected && address && !loading && oras.length === 0) {
@@ -233,6 +251,8 @@ export default function SugartownOraDashboard() {
     document.getElementById("search-section")?.scrollIntoView({ behavior: "smooth" })
   }
 
+  const filteredOras = getFilteredOras(oras)
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Header */}
@@ -380,46 +400,56 @@ export default function SugartownOraDashboard() {
           <div className="mb-12">
             <div className="flex items-center justify-between mb-8">
               <div>
-                <h3 className="text-3xl font-bold text-slate-900">Ora Collection ({oras.length})</h3>
+                <h3 className="text-3xl font-bold text-slate-900">Ora Collection ({filteredOras.length})</h3>
                 <p className="text-slate-600 mt-1">
                   {searchedWallet &&
                     `Found in wallet: ${searchedWallet.length > 20 ? `${searchedWallet.slice(0, 6)}...${searchedWallet.slice(-4)}` : searchedWallet}`}
                 </p>
               </div>
-              <Button
-                onClick={handleCopyAll}
-                disabled={copyStatus === "copying"}
-                className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] disabled:transform-none disabled:hover:scale-100"
-              >
-                {copyStatus === "copying" ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Copying...
-                  </>
-                ) : copyStatus === "copied" ? (
-                  <>
-                    <CheckCircle className="w-4 h-4" />
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-4 h-4" />
-                    Copy All (MCP Format)
-                  </>
-                )}
-              </Button>
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={() => setShowFilterPanel(true)}
+                  variant="outline"
+                  className="flex items-center gap-2 bg-white/80 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 border-slate-300 hover:border-blue-400 text-slate-700 hover:text-blue-700 font-medium shadow-sm hover:shadow-md transition-all duration-300"
+                >
+                  <Filter className="w-4 h-4" />
+                  Filters
+                </Button>
+                <Button
+                  onClick={handleCopyAll}
+                  disabled={copyStatus === "copying"}
+                  className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] disabled:transform-none disabled:hover:scale-100"
+                >
+                  {copyStatus === "copying" ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Copying...
+                    </>
+                  ) : copyStatus === "copied" ? (
+                    <>
+                      <CheckCircle className="w-4 h-4" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      Copy All (MCP Format)
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
 
             {selectionMode && (
               <div className="flex flex-wrap items-center justify-between mb-4 gap-2">
                 <span className="text-sm text-slate-600">
-                  {selectedOras.length} of {oras.length} selected
+                  {selectedOras.length} of {filteredOras.length} selected
                 </span>
                 <div className="flex flex-wrap gap-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setSelectedOras(oras)}
+                    onClick={() => setSelectedOras(filteredOras)}
                     className="bg-white/80 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 border-slate-300 hover:border-blue-400 text-slate-700 hover:text-blue-700 font-medium shadow-sm hover:shadow-md transition-all duration-200"
                   >
                     Select All
@@ -457,7 +487,7 @@ export default function SugartownOraDashboard() {
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-              {oras.map((ora) => (
+              {filteredOras.map((ora) => (
                 <Card
                   key={ora.oraNumber}
                   className="group overflow-hidden hover:shadow-2xl transition-all duration-500 border-slate-200/50 bg-white/70 backdrop-blur-sm hover:bg-white/90 hover:scale-[1.02] hover:-translate-y-1"
@@ -483,7 +513,6 @@ export default function SugartownOraDashboard() {
                       alt={ora.name}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
                     />
-                    {/* Gradient overlay for better text readability */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
                     <div className="absolute top-4 right-4">
@@ -491,13 +520,27 @@ export default function SugartownOraDashboard() {
                         #{ora.oraNumber}
                       </Badge>
                     </div>
-                    {hasAIMFile(ora.oraNumber) && (
-                      <div className="absolute top-4 left-4">
+                    <div className="absolute top-4 left-4 flex gap-2">
+                      {hasAIMFile(ora.oraNumber) && (
                         <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white font-bold text-sm px-3 py-1 shadow-lg">
                           AIM ✓
                         </Badge>
-                      </div>
-                    )}
+                      )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => toggleFavorite(ora.oraNumber)}
+                        className="p-1 h-8 w-8 bg-white/90 hover:bg-white rounded-full shadow-lg backdrop-blur-sm"
+                      >
+                        <Heart
+                          className={`w-4 h-4 ${
+                            favorites.has(ora.oraNumber)
+                              ? "fill-red-500 text-red-500"
+                              : "text-slate-600 hover:text-red-500"
+                          } transition-colors`}
+                        />
+                      </Button>
+                    </div>
                   </div>
 
                   <CardHeader className="pb-4 pt-6">
@@ -533,7 +576,6 @@ export default function SugartownOraDashboard() {
                     )}
 
                     <div className={`space-y-3 pt-2 ${selectionMode ? "opacity-50 pointer-events-none" : ""}`}>
-                      {/* OpenSea button - secondary action */}
                       <Button
                         variant="outline"
                         size="sm"
@@ -544,7 +586,6 @@ export default function SugartownOraDashboard() {
                         View on OpenSea
                       </Button>
 
-                      {/* Primary AIM actions */}
                       {hasAIMFile(ora.oraNumber) ? (
                         <div className="grid grid-cols-2 gap-2">
                           <Link href={`/character/${ora.oraNumber}`} className="flex-1">
@@ -559,7 +600,7 @@ export default function SugartownOraDashboard() {
                           </Link>
                           <Button
                             size="sm"
-                            className="h-10 flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white shadow-md hover:shadow-lg transition-all duration-200"
+                            className="h-10 flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
                             onClick={() => handleOpenAIMEditor(ora)}
                           >
                             <FileText className="w-4 h-4" />
@@ -653,6 +694,9 @@ export default function SugartownOraDashboard() {
           onClose={() => setShowBulkModal(false)}
         />
       )}
+
+      {/* Filter Panel */}
+      <FilterPanel oras={oras} isOpen={showFilterPanel} onClose={() => setShowFilterPanel(false)} />
     </div>
   )
 }
