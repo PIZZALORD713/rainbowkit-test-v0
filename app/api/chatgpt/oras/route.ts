@@ -76,6 +76,14 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const walletInput = searchParams.get("address")
 
+  console.log("[v0] =================================")
+  console.log("[v0] OpenSea API Route Called")
+  console.log("[v0] =================================")
+  console.log(`[v0] OPENSEA_API_KEY exists: ${!!process.env.OPENSEA_API_KEY}`)
+  console.log(`[v0] OPENSEA_API_KEY length: ${process.env.OPENSEA_API_KEY?.length || 0}`)
+  console.log(`[v0] OPENSEA_API_KEY preview: ${process.env.OPENSEA_API_KEY?.substring(0, 10)}...`)
+  console.log("[v0] =================================")
+
   if (!walletInput) {
     return NextResponse.json({ error: "Wallet address or ENS name is required" }, { status: 400 })
   }
@@ -116,6 +124,38 @@ export async function GET(request: NextRequest) {
   )
 
   try {
+    if (!process.env.OPENSEA_API_KEY) {
+      console.log("[v0] ERROR: No API key found!")
+      return NextResponse.json({ success: false, error: "OpenSea API key not configured" }, { status: 500 })
+    }
+
+    const testApiKey = process.env.OPENSEA_API_KEY.trim()
+    console.log(`[v0] Testing API key: ${testApiKey.substring(0, 8)}...${testApiKey.substring(testApiKey.length - 4)}`)
+
+    // Test with a simple collection request first
+    const testUrl = "https://api.opensea.io/api/v2/collections/sugartown-oras"
+    const testHeaders = {
+      accept: "application/json",
+      "X-API-KEY": testApiKey,
+    }
+
+    console.log(`[v0] Making test request to: ${testUrl}`)
+    console.log(`[v0] Test headers:`, testHeaders)
+
+    const testResponse = await fetch(testUrl, { headers: testHeaders })
+    console.log(`[v0] Test response status: ${testResponse.status}`)
+
+    if (!testResponse.ok) {
+      const testError = await testResponse.text()
+      console.log(`[v0] Test request failed: ${testError}`)
+      return NextResponse.json(
+        { success: false, error: `API key test failed: ${testResponse.status} - ${testError}` },
+        { status: 500 },
+      )
+    }
+
+    console.log(`[v0] API key test successful! Proceeding with main request...`)
+
     // OpenSea v2 API has a maximum limit of 100 NFTs per request
     const collectionName = "sugartown-oras" // Correct collection name
     const openseaUrl = `https://api.opensea.io/api/v2/chain/ethereum/account/${wallet}/nfts?collection=${collectionName}&limit=100`
@@ -123,15 +163,12 @@ export async function GET(request: NextRequest) {
     const headers: Record<string, string> = {
       accept: "application/json",
       "user-agent": "Mozilla/5.0 (compatible; NFT-Dashboard/1.0)",
-    }
-
-    // Add API key if available
-    if (process.env.OPENSEA_API_KEY) {
-      headers["x-api-key"] = process.env.OPENSEA_API_KEY
+      "X-API-KEY": testApiKey,
     }
 
     console.log(`🔍 DEBUG: Fetching from OpenSea v2 API`)
     console.log(`🔍 DEBUG: URL: ${openseaUrl}`)
+    console.log(`🔍 DEBUG: Request headers:`, JSON.stringify(headers, null, 2))
 
     const response = await fetch(openseaUrl, {
       headers,

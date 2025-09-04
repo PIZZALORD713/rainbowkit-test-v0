@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Filter, X, ChevronDown, Sparkles, RotateCcw } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Filter, X, ChevronDown, Sparkles, RotateCcw, AlertCircle } from "lucide-react"
 import { useFilterStore } from "@/lib/store"
 
 interface Ora {
@@ -35,6 +36,7 @@ export function FilterPanel({ oras, isOpen, onClose }: FilterPanelProps) {
     clearAllFilters,
     setShowFavoritesOnly,
     getAvailableTraits,
+    favorites,
   } = useFilterStore()
 
   const [minOra, setMinOra] = useState("")
@@ -59,6 +61,14 @@ export function FilterPanel({ oras, isOpen, onClose }: FilterPanelProps) {
     } else {
       setTraitFilter(traitType, newValues)
     }
+  }
+
+  const handleFavoritesToggle = (checked: boolean) => {
+    if (!favorites.size && checked) {
+      // Don't allow enabling favorites only when no favorites exist
+      return
+    }
+    setShowFavoritesOnly(checked)
   }
 
   const handleApplyFilters = () => {
@@ -142,17 +152,47 @@ export function FilterPanel({ oras, isOpen, onClose }: FilterPanelProps) {
             </div>
 
             {/* Favorites Toggle */}
-            <div className="flex items-center justify-between p-4 bg-white/30 rounded-xl border border-white/20">
-              <div className="flex items-center gap-3">
-                <Sparkles className="w-5 h-5 text-yellow-500" />
-                <Label className="text-sm font-medium text-gray-700">Favorites Only</Label>
+            <TooltipProvider>
+              <div
+                className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
+                  favorites.size ? "bg-white/30 border-white/20" : "bg-gray-100/50 border-gray-200/50"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Sparkles className={`w-5 h-5 ${favorites.size ? "text-yellow-500" : "text-gray-400"}`} />
+                  <div className="flex flex-col">
+                    <Label className={`text-sm font-medium ${favorites.size ? "text-gray-700" : "text-gray-500"}`}>
+                      Favorites Only
+                    </Label>
+                    {favorites.size && (
+                      <span className="text-xs text-gray-500">
+                        {favorites.size} favorite{favorites.size !== 1 ? "s" : ""} saved
+                      </span>
+                    )}
+                  </div>
+                  {!favorites.size && (
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <AlertCircle className="w-4 h-4 text-gray-400" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Add some favorites first by clicking the heart icon on Oras</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+                <Switch
+                  checked={showFavoritesOnly}
+                  onCheckedChange={handleFavoritesToggle}
+                  disabled={!favorites.size}
+                  className={`${
+                    favorites.size
+                      ? "data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-yellow-400 data-[state=checked]:to-orange-500"
+                      : "opacity-50 cursor-not-allowed"
+                  }`}
+                />
               </div>
-              <Switch
-                checked={showFavoritesOnly}
-                onCheckedChange={setShowFavoritesOnly}
-                className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-yellow-400 data-[state=checked]:to-orange-500"
-              />
-            </div>
+            </TooltipProvider>
 
             {/* Trait Filters */}
             {!searchNumber && Object.keys(availableTraits).length > 0 && (
