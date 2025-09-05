@@ -43,7 +43,7 @@ const config = hasValidProjectId
       connectors: connectorsForWallets([
         {
           groupName: "Basic",
-          wallets: [injectedWallet, coinbaseWallet({ appName: "Sugar Depot" }), safeWallet],
+          wallets: [injectedWallet, coinbaseWallet({ appName: "Ora Kit" }), safeWallet],
         },
       ]),
     })

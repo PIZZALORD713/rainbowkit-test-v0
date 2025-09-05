@@ -76,12 +76,14 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const walletInput = searchParams.get("address")
 
+  const OPENSEA_API_KEY = process.env.OPENSEA_API_KEY
+
   console.log("[v0] =================================")
   console.log("[v0] OpenSea API Route Called")
   console.log("[v0] =================================")
-  console.log(`[v0] OPENSEA_API_KEY exists: ${!!process.env.OPENSEA_API_KEY}`)
-  console.log(`[v0] OPENSEA_API_KEY length: ${process.env.OPENSEA_API_KEY?.length || 0}`)
-  console.log(`[v0] OPENSEA_API_KEY preview: ${process.env.OPENSEA_API_KEY?.substring(0, 10)}...`)
+  console.log(`[v0] OPENSEA_API_KEY exists: ${!!OPENSEA_API_KEY}`)
+  console.log(`[v0] OPENSEA_API_KEY length: ${OPENSEA_API_KEY?.length || 0}`)
+  console.log(`[v0] OPENSEA_API_KEY preview: ${OPENSEA_API_KEY?.substring(0, 10)}...`)
   console.log("[v0] =================================")
 
   if (!walletInput) {
@@ -124,12 +126,12 @@ export async function GET(request: NextRequest) {
   )
 
   try {
-    if (!process.env.OPENSEA_API_KEY) {
+    if (!OPENSEA_API_KEY) {
       console.log("[v0] ERROR: No API key found!")
       return NextResponse.json({ success: false, error: "OpenSea API key not configured" }, { status: 500 })
     }
 
-    const testApiKey = process.env.OPENSEA_API_KEY.trim()
+    const testApiKey = OPENSEA_API_KEY.trim()
     console.log(`[v0] Testing API key: ${testApiKey.substring(0, 8)}...${testApiKey.substring(testApiKey.length - 4)}`)
 
     // Test with a simple collection request first

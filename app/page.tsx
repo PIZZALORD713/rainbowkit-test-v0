@@ -3,25 +3,10 @@
 import { useState, useCallback, useEffect } from "react"
 import { useAccount, useEnsName } from "wagmi"
 import CustomConnectButton from "@/components/custom-connect-button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  Search,
-  Wallet,
-  ExternalLink,
-  Sparkles,
-  User,
-  FileText,
-  Eye,
-  Settings,
-  Copy,
-  CheckCircle,
-  Filter,
-  Heart,
-} from "lucide-react"
+import { Search, Wallet, Sparkles, User, FileText, Settings, Copy, CheckCircle, Filter } from "lucide-react"
 import { AIMEditor } from "@/components/aim-editor"
 import { AIMStorage } from "@/lib/aim-storage"
 import BulkEditModal from "@/components/bulk-edit-modal"
@@ -29,6 +14,7 @@ import HeroCarousel from "@/components/hero-carousel"
 import { FilterPanel } from "@/components/filter-panel"
 import { useFilterStore } from "@/lib/store"
 import Link from "next/link"
+import { OraCard } from "@/components/OraCard"
 
 interface Ora {
   name: string
@@ -488,138 +474,22 @@ export default function SugartownOraDashboard() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
               {filteredOras.map((ora) => (
-                <Card
+                <OraCard
                   key={ora.oraNumber}
-                  className="group overflow-hidden hover:shadow-2xl transition-all duration-500 border-slate-200/50 bg-white/70 backdrop-blur-sm hover:bg-white/90 hover:scale-[1.02] hover:-translate-y-1"
-                >
-                  {selectionMode && (
-                    <input
-                      type="checkbox"
-                      aria-label={`Select ${ora.name}`}
-                      checked={selectedOras.some((o) => o.oraNumber === ora.oraNumber)}
-                      onChange={(e) => {
-                        const checked = e.target.checked
-                        setSelectedOras((prev) =>
-                          checked ? [...prev, ora] : prev.filter((o) => o.oraNumber !== ora.oraNumber),
-                        )
-                      }}
-                      className="absolute top-3 left-3 z-20 w-5 h-5 text-indigo-600 bg-white border-2 border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 shadow-sm"
-                    />
-                  )}
-
-                  <div className="aspect-square relative overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200">
-                    <img
-                      src={ora.image || "/placeholder.svg?height=400&width=400&text=Ora"}
-                      alt={ora.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-                    <div className="absolute top-4 right-4">
-                      <Badge className="bg-white/95 text-slate-800 font-bold text-sm px-3 py-1 shadow-lg backdrop-blur-sm">
-                        #{ora.oraNumber}
-                      </Badge>
-                    </div>
-                    <div className="absolute top-4 left-4 flex gap-2">
-                      {hasAIMFile(ora.oraNumber) && (
-                        <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white font-bold text-sm px-3 py-1 shadow-lg">
-                          AIM ✓
-                        </Badge>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => toggleFavorite(ora.oraNumber)}
-                        className="p-1 h-8 w-8 bg-white/90 hover:bg-white rounded-full shadow-lg backdrop-blur-sm"
-                      >
-                        <Heart
-                          className={`w-4 h-4 ${
-                            isFavorite(ora.oraNumber)
-                              ? "fill-red-500 text-red-500"
-                              : "text-slate-600 hover:text-red-500"
-                          } transition-colors`}
-                        />
-                      </Button>
-                    </div>
-                  </div>
-
-                  <CardHeader className="pb-4 pt-6">
-                    <CardTitle className="text-xl font-bold text-slate-900 group-hover:text-indigo-600 transition-colors duration-300 leading-tight">
-                      {getDisplayName(ora)}
-                    </CardTitle>
-                  </CardHeader>
-
-                  <CardContent className="pt-0 pb-6 space-y-5">
-                    {Object.keys(ora.traits).length > 0 && (
-                      <div className="space-y-3">
-                        <p className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Traits</p>
-                        <div className="space-y-2">
-                          {Object.entries(ora.traits)
-                            .slice(0, 3)
-                            .map(([key, value]) => (
-                              <div key={key} className="flex items-center justify-between py-1">
-                                <span className="text-xs font-medium text-slate-600 uppercase tracking-wide">
-                                  {key}
-                                </span>
-                                <Badge className={`text-xs font-medium ${getTraitColor(key)}`}>{value}</Badge>
-                              </div>
-                            ))}
-                          {Object.keys(ora.traits).length > 3 && (
-                            <div className="text-center pt-1">
-                              <Badge variant="outline" className="text-xs text-slate-500 border-slate-300">
-                                +{Object.keys(ora.traits).length - 3} more traits
-                              </Badge>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className={`space-y-3 pt-2 ${selectionMode ? "opacity-50 pointer-events-none" : ""}`}>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full flex items-center justify-center gap-2 h-10 bg-transparent hover:bg-slate-50 border-slate-300 hover:border-slate-400 text-slate-700 hover:text-slate-900 transition-all duration-200"
-                        onClick={() => window.open(ora.openseaUrl, "_blank")}
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        View on OpenSea
-                      </Button>
-
-                      {hasAIMFile(ora.oraNumber) ? (
-                        <div className="grid grid-cols-2 gap-2">
-                          <Link href={`/character/${ora.oraNumber}`} className="flex-1">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="w-full h-10 flex items-center justify-center gap-2 bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-400 transition-all duration-200"
-                            >
-                              <Eye className="w-4 h-4" />
-                              View Profile
-                            </Button>
-                          </Link>
-                          <Button
-                            size="sm"
-                            className="h-10 flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
-                            onClick={() => handleOpenAIMEditor(ora)}
-                          >
-                            <FileText className="w-4 h-4" />
-                            Edit AIM
-                          </Button>
-                        </div>
-                      ) : (
-                        <Button
-                          size="sm"
-                          className="w-full h-12 flex items-center justify-center gap-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
-                          onClick={() => handleOpenAIMEditor(ora)}
-                        >
-                          <FileText className="w-4 h-4" />
-                          Create AIM Profile
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+                  ora={ora}
+                  displayName={getDisplayName(ora)}
+                  hasAIM={hasAIMFile(ora.oraNumber)}
+                  isFavorite={isFavorite(ora.oraNumber)}
+                  isSelected={selectedOras.some((o) => o.oraNumber === ora.oraNumber)}
+                  selectionMode={selectionMode}
+                  onToggleFavorite={() => toggleFavorite(ora.oraNumber)}
+                  onToggleSelection={(checked) => {
+                    setSelectedOras((prev) =>
+                      checked ? [...prev, ora] : prev.filter((o) => o.oraNumber !== ora.oraNumber),
+                    )
+                  }}
+                  onOpenAIMEditor={() => handleOpenAIMEditor(ora)}
+                />
               ))}
             </div>
           </div>

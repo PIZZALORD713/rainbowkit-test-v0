@@ -106,7 +106,6 @@ export default function CustomConnectButton() {
                         />
                       </svg>
                       {account.displayName}
-                      {account.displayBalance ? ` (${account.displayBalance})` : ""}
                     </button>
                   </div>
                 )
