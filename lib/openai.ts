@@ -113,3 +113,49 @@ export async function imageGenerate(prompt: string, options: ImageOptions = {}) 
     return data.data || []
   })
 }
+
+export const openai = {
+  chat: {
+    completions: {
+      create: async (params: {
+        model: string
+        messages: ChatMessage[]
+        response_format?: { type: string }
+        temperature?: number
+        max_tokens?: number
+      }) => {
+        const content = await chat(params.messages, {
+          model: params.model,
+          temperature: params.temperature,
+          max_tokens: params.max_tokens,
+        })
+
+        return {
+          choices: [
+            {
+              message: {
+                content: content,
+              },
+            },
+          ],
+        }
+      },
+    },
+  },
+  images: {
+    generate: async (params: {
+      model?: string
+      prompt: string
+      size?: "1024x1024" | "1024x1792" | "1792x1024"
+      quality?: "standard" | "hd"
+      n?: number
+    }) => {
+      return await imageGenerate(params.prompt, {
+        model: params.model,
+        size: params.size,
+        quality: params.quality,
+        n: params.n,
+      })
+    },
+  },
+}

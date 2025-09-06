@@ -1,33 +1,34 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { chat } from "@/lib/openai"
+export const runtime = "nodejs" // avoid Edge for OpenAI SDK
+
+import type { NextRequest } from "next/server"
+import { openai } from "@/lib/openai"
 import { getCache, setCache } from "@/lib/aim-cache"
 import { createHash } from "crypto"
 import type { AIMDelta } from "@/types/aim"
+import { z } from "zod"
 
-type TraitsObj = Record<string, string>
-type Trait = { key: string; value: string; trait_type?: string; value?: string }
+const Body = z.object({
+  oraNumber: z.number(),
+  imageUrl: z.string().url().optional(),
+  traits: z.union([z.array(z.object({ key: z.string(), value: z.string() })), z.record(z.string(), z.string())]),
+})
 
-function toTraitArray(traits: TraitsObj | Trait[] | undefined): Trait[] {
-  if (!traits) return []
-  if (Array.isArray(traits)) return traits
-  return Object.entries(traits).map(([key, value]) => ({ key, value, trait_type: key }))
-}
+type Trait = { key: string; value: string }
+const toTraitArray = (t: Record<string, string> | Trait[]): Trait[] =>
+  Array.isArray(t) ? t : Object.entries(t).map(([key, value]) => ({ key, value }))
 
-function safeParseJSON(jsonString: string) {
-  try {
-    return JSON.parse(jsonString)
-  } catch {
-    return null
-  }
-}
+const json = (data: unknown, status = 200) =>
+  new Response(JSON.stringify(data), {
+    status,
+    headers: { "content-type": "application/json; charset=utf-8" },
+  })
 
 const ANALYZER_SYSTEM_PROMPT = `You are an Ora identity analyst. Analyze NFT traits and image to suggest Avatar Identity Model fields.
 
 Rules:
-- Output JSON only: AIMDelta format
+- Output JSON only: {patch, confidence} format
 - Fill likely personality, backstory, abilities, behavior, and visuals fields
 - Keep phrases concise (2-4 words max)
-- Respect any existing visuals.doNotChange array
 - No weapons or violence
 - Style: solarpunk sci-fi, optimistic future
 - Confidence scores: 0.1-1.0 based on trait clarity
@@ -132,7 +133,7 @@ const DEMO_RESPONSES: Record<string, AIMDelta> = {
 }
 
 function generateDemoResponse(traits: any[]): AIMDelta {
-  const typeTraits = traits.filter((t) => t.trait_type?.toLowerCase() === "type")
+  const typeTraits = traits.filter((t) => t.key?.toLowerCase() === "type")
   const oraType = typeTraits[0]?.value?.toLowerCase() || "default"
 
   const baseResponse = DEMO_RESPONSES[oraType] || DEMO_RESPONSES.default
@@ -160,124 +161,74 @@ function generateDemoResponse(traits: any[]): AIMDelta {
 }
 
 export async function POST(request: NextRequest) {
-  let requestData: { oraNumber: string; traits: any; imageUrl?: string }
-
   try {
-    try {
-      requestData = await request.json()
-    } catch (parseError) {
-      console.error("Failed to parse request body:", parseError)
-      return NextResponse.json({ error: "Invalid request body" }, { status: 400 })
+    const raw = await request.json().catch(() => null)
+    if (!raw) return json({ error: "Invalid JSON body" }, 400)
+
+    const parsed = Body.safeParse(raw)
+    if (!parsed.success) {
+      return json({ error: "Invalid body", issues: parsed.error.format() }, 400)
     }
 
-    const { oraNumber, traits, imageUrl } = requestData
-
-    if (!oraNumber || !traits) {
-      return NextResponse.json({ error: "Missing required fields: oraNumber, traits" }, { status: 400 })
-    }
-
-    const traitsArray = toTraitArray(traits)
+    const { oraNumber, imageUrl } = parsed.data
+    const traits = toTraitArray(parsed.data.traits)
 
     const useDemo = !process.env.OPENAI_API_KEY || process.env.ORAKIT_DEMO_MODE === "true"
 
     if (useDemo) {
       console.log(`[v0] Using demo mode for Ora #${oraNumber}`)
-      const demoResponse = generateDemoResponse(traitsArray)
-
-      // Add a small delay to simulate API call
+      const demoResponse = generateDemoResponse(traits)
       await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 2000))
 
-      return NextResponse.json({
+      return json({
         ...demoResponse,
         _demo: true,
         _message: "Demo mode - AI analysis simulated",
       })
     }
 
-    const cacheKey = createHash("sha1")
-      .update(JSON.stringify({ traits: traitsArray, imageUrl }))
-      .digest("hex")
+    const cacheKey = createHash("sha1").update(JSON.stringify({ traits, imageUrl })).digest("hex")
 
     const cachedResult = getCache(cacheKey)
     if (cachedResult) {
       console.log(`[v0] Cache hit for Ora #${oraNumber}`)
-      return NextResponse.json({
-        ...cachedResult,
-        _cached: true,
-      })
+      return json({ ...cachedResult, _cached: true })
     }
 
-    const userPrompt = `Analyze Ora #${oraNumber}:
-Traits: ${JSON.stringify(traitsArray, null, 2)}
-${imageUrl ? `Image: ${imageUrl}` : ""}
-
-Generate AIM suggestions based on these traits.`
-
-    try {
-      const response = await chat(
-        [
-          { role: "system", content: ANALYZER_SYSTEM_PROMPT },
-          { role: "user", content: userPrompt },
-        ],
-        {
-          temperature: 0.7,
-          max_tokens: 800,
-        },
-      )
-
-      const aimDelta = safeParseJSON(response)
-      if (!aimDelta || !aimDelta.patch) {
-        console.error("Failed to parse AI response:", response)
-        console.log(`[v0] AI response parse failed, falling back to demo mode for Ora #${oraNumber}`)
-        const demoResponse = generateDemoResponse(traitsArray)
-        return NextResponse.json({
-          ...demoResponse,
-          _demo: true,
-          _message: "AI response invalid - using demo analysis",
-        })
-      }
-
-      setCache(cacheKey, aimDelta)
-
-      return NextResponse.json(aimDelta)
-    } catch (openaiError) {
-      console.error("OpenAI API error:", openaiError)
-
-      console.log(`[v0] OpenAI error, falling back to demo mode for Ora #${oraNumber}`)
-      const demoResponse = generateDemoResponse(traitsArray)
-
-      let errorMessage = "AI temporarily unavailable - using demo analysis"
-      let retryAfter = 60
-
-      if (openaiError instanceof Error) {
-        const errorMsg = openaiError.message.toLowerCase()
-
-        if (errorMsg.includes("429") || errorMsg.includes("rate limit")) {
-          errorMessage = "Rate limited - using demo analysis"
-          retryAfter = 60
-        } else if (errorMsg.includes("401") || errorMsg.includes("unauthorized")) {
-          errorMessage = "API key invalid - using demo analysis"
-        } else if (errorMsg.includes("quota") || errorMsg.includes("billing")) {
-          errorMessage = "Quota exceeded - using demo analysis"
-        }
-      }
-
-      return NextResponse.json({
-        ...demoResponse,
-        _demo: true,
-        _message: errorMessage,
-        retryAfter,
-      })
-    }
-  } catch (unexpectedError) {
-    console.error("Unexpected error in analyze route:", unexpectedError)
-
-    const demoResponse = generateDemoResponse([])
-    return NextResponse.json({
-      ...demoResponse,
-      _demo: true,
-      _message: "Service temporarily unavailable - using demo analysis",
-      error: "unexpected_error",
+    const resp = await openai.chat.completions.create({
+      model: "gpt-4o-mini", // Updated model name
+      response_format: { type: "json_object" }, // Force JSON response
+      messages: [
+        { role: "system", content: ANALYZER_SYSTEM_PROMPT },
+        { role: "user", content: JSON.stringify({ oraNumber, imageUrl, traits }) },
+      ],
     })
+
+    const content = resp.choices?.[0]?.message?.content ?? "{}"
+    let data: any
+    try {
+      data = JSON.parse(content)
+    } catch {
+      data = { patch: {}, confidence: {} }
+    }
+
+    if (!data.patch || !data.confidence) {
+      data = { patch: {}, confidence: {} }
+    }
+
+    setCache(cacheKey, data)
+    return json(data, 200)
+  } catch (e: any) {
+    console.error("API error:", e)
+    const status = e?.status === 429 ? 429 : 500
+    return json(
+      {
+        error: e?.message || "Internal error",
+        status,
+        _demo: status === 429, // Trigger demo mode on rate limit
+        _message: status === 429 ? "Rate limited - using demo analysis" : "Service error",
+      },
+      status,
+    )
   }
 }

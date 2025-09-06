@@ -1,10 +1,18 @@
 "use client"
 
 import type React from "react"
+import { postJSON } from "@/lib/api-client"
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -66,44 +74,11 @@ export function AIMAutofill({ oraNumber, traits, imageUrl, onApply, disabled }: 
   const handleAnalyze = async () => {
     setLoading(true)
     try {
-      const response = await fetch("/api/aim/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          oraNumber: Number.parseInt(oraNumber),
-          traits,
-          imageUrl,
-        }),
+      const aimDelta: DemoAIMResponse = await postJSON("/api/aim/analyze", {
+        oraNumber: Number.parseInt(oraNumber),
+        traits,
+        imageUrl,
       })
-
-      if (!response.ok) {
-        const error = await response.json()
-
-        if (response.status === 429) {
-          const retrySeconds = error.retryAfter || 60
-          setRetryAfter(retrySeconds)
-          startRetryCountdown(retrySeconds)
-          toast({
-            title: "Rate Limit Exceeded",
-            description: `Too many requests. Please wait ${retrySeconds} seconds before trying again.`,
-            variant: "destructive",
-          })
-          return
-        }
-
-        if (response.status === 503) {
-          toast({
-            title: "AI Service Unavailable",
-            description: error.error || "AI analysis is temporarily unavailable. Please try again later.",
-            variant: "destructive",
-          })
-          return
-        }
-
-        throw new Error(error.error || "Analysis failed")
-      }
-
-      const aimDelta: DemoAIMResponse = await response.json()
 
       if (aimDelta._demo) {
         setIsDemoMode(true)
@@ -206,7 +181,7 @@ export function AIMAutofill({ oraNumber, traits, imageUrl, onApply, disabled }: 
           AI Autofill AIM
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[80vh]">
+      <DialogContent className="max-w-2xl max-h-[80vh]" aria-describedby="aim-autofill-desc">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-purple-600" />
@@ -218,6 +193,9 @@ export function AIMAutofill({ oraNumber, traits, imageUrl, onApply, disabled }: 
               </Badge>
             )}
           </DialogTitle>
+          <DialogDescription id="aim-autofill-desc" className="sr-only">
+            Review suggested AIM fields from AI analysis and accept or reject each before saving.
+          </DialogDescription>
         </DialogHeader>
 
         {!delta ? (
