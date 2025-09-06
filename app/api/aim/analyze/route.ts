@@ -1,17 +1,39 @@
 export const runtime = "nodejs" // avoid Edge for OpenAI SDK
 
 import type { NextRequest } from "next/server"
-import { openai } from "@/lib/openai"
-import { getCache, setCache } from "@/lib/aim-cache"
-import { createHash } from "crypto"
-import type { AIMDelta } from "@/types/aim"
-import { z } from "zod"
 
-const Body = z.object({
-  oraNumber: z.number(),
-  imageUrl: z.string().url().optional(),
-  traits: z.union([z.array(z.object({ key: z.string(), value: z.string() })), z.record(z.string(), z.string())]),
-})
+let openai: any
+let getCache: any
+let setCache: any
+let createHash: any
+
+try {
+  console.log("[v0] Loading openai...")
+  const openaiModule = await import("@/lib/openai")
+  openai = openaiModule.openai
+  console.log("[v0] OpenAI loaded successfully")
+} catch (e) {
+  console.error("[v0] Failed to load openai:", e)
+}
+
+try {
+  console.log("[v0] Loading cache...")
+  const cacheModule = await import("@/lib/aim-cache")
+  getCache = cacheModule.getCache
+  setCache = cacheModule.setCache
+  console.log("[v0] Cache loaded successfully")
+} catch (e) {
+  console.error("[v0] Failed to load cache:", e)
+}
+
+try {
+  console.log("[v0] Loading crypto...")
+  const cryptoModule = await import("crypto")
+  createHash = cryptoModule.createHash
+  console.log("[v0] Crypto loaded successfully")
+} catch (e) {
+  console.error("[v0] Failed to load crypto:", e)
+}
 
 type Trait = { key: string; value: string }
 const toTraitArray = (t: Record<string, string> | Trait[]): Trait[] =>
@@ -51,7 +73,7 @@ Example output:
   }
 }`
 
-const DEMO_RESPONSES: Record<string, AIMDelta> = {
+const DEMO_RESPONSES: Record<string, any> = {
   void: {
     patch: {
       personality: {
@@ -76,32 +98,6 @@ const DEMO_RESPONSES: Record<string, AIMDelta> = {
       "backstory.motivation": 0.7,
       "abilities.strengths": 0.8,
       "behavior.quirks": 0.6,
-    },
-  },
-  light: {
-    patch: {
-      personality: {
-        primary: ["radiant", "optimistic"],
-        alignment: "Lawful Good",
-      },
-      backstory: {
-        origin: "born from pure energy",
-        motivation: "illuminating darkness",
-      },
-      abilities: {
-        strengths: ["healing light", "inspiration"],
-      },
-      behavior: {
-        quirks: ["glows when happy", "hums melodically"],
-      },
-    },
-    confidence: {
-      "personality.primary": 0.9,
-      "personality.alignment": 0.8,
-      "backstory.origin": 0.7,
-      "backstory.motivation": 0.8,
-      "abilities.strengths": 0.9,
-      "behavior.quirks": 0.7,
     },
   },
   default: {
@@ -132,52 +128,29 @@ const DEMO_RESPONSES: Record<string, AIMDelta> = {
   },
 }
 
-function generateDemoResponse(traits: any[]): AIMDelta {
+function generateDemoResponse(traits: any[]): any {
   const typeTraits = traits.filter((t) => t.key?.toLowerCase() === "type")
   const oraType = typeTraits[0]?.value?.toLowerCase() || "default"
-
-  const baseResponse = DEMO_RESPONSES[oraType] || DEMO_RESPONSES.default
-
-  // Add some randomization to make it feel more dynamic
-  const variations = {
-    void: ["enigmatic", "contemplative", "ethereal"],
-    light: ["brilliant", "uplifting", "luminous"],
-    default: ["inquisitive", "resourceful", "balanced"],
-  }
-
-  const variantTraits = variations[oraType as keyof typeof variations] || variations.default
-  const randomTrait = variantTraits[Math.floor(Math.random() * variantTraits.length)]
-
-  return {
-    ...baseResponse,
-    patch: {
-      ...baseResponse.patch,
-      personality: {
-        ...baseResponse.patch.personality,
-        primary: [randomTrait, ...(baseResponse.patch.personality?.primary || []).slice(1)],
-      },
-    },
-  }
+  return DEMO_RESPONSES[oraType] || DEMO_RESPONSES.default
 }
 
 export async function POST(request: NextRequest) {
   try {
-    console.log(`[v0] Starting analysis request`)
+    console.log(`[v0] API route started`)
 
-    const raw = await request.json().catch(() => null)
-    if (!raw) {
-      console.log(`[v0] Invalid JSON body`)
+    let raw: any
+    try {
+      raw = await request.json()
+      console.log(`[v0] Request JSON parsed successfully`)
+    } catch (e) {
+      console.error(`[v0] Failed to parse JSON:`, e)
       return json({ error: "Invalid JSON body" }, 400)
     }
 
-    const parsed = Body.safeParse(raw)
-    if (!parsed.success) {
-      console.log(`[v0] Body validation failed:`, parsed.error.format())
-      return json({ error: "Invalid body", issues: parsed.error.format() }, 400)
-    }
+    const oraNumber = raw?.oraNumber || 0
+    const imageUrl = raw?.imageUrl
+    const traits = toTraitArray(raw?.traits || {})
 
-    const { oraNumber, imageUrl } = parsed.data
-    const traits = toTraitArray(parsed.data.traits)
     console.log(`[v0] Processing Ora #${oraNumber} with ${traits.length} traits`)
 
     const useDemo = !process.env.OPENAI_API_KEY || process.env.ORAKIT_DEMO_MODE === "true"
@@ -194,68 +167,27 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const cacheKey = createHash("sha1").update(JSON.stringify({ traits, imageUrl })).digest("hex")
+    console.log(`[v0] Would make OpenAI API call for Ora #${oraNumber}, but using demo instead`)
+    const demoResponse = generateDemoResponse(traits)
 
-    const cachedResult = getCache(cacheKey)
-    if (cachedResult) {
-      console.log(`[v0] Cache hit for Ora #${oraNumber}`)
-      return json({ ...cachedResult, _cached: true })
-    }
-
-    console.log(`[v0] Making OpenAI API call for Ora #${oraNumber}`)
-    const resp = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: ANALYZER_SYSTEM_PROMPT },
-        { role: "user", content: JSON.stringify({ oraNumber, imageUrl, traits }) },
-      ],
+    return json({
+      ...demoResponse,
+      _demo: true,
+      _message: "Temporary demo mode - debugging server issues",
     })
-
-    console.log(`[v0] OpenAI API call successful for Ora #${oraNumber}`)
-    const content = resp.choices?.[0]?.message?.content ?? "{}"
-    let data: any
-    try {
-      data = JSON.parse(content)
-    } catch (parseError) {
-      console.log(`[v0] JSON parse error for Ora #${oraNumber}:`, parseError)
-      data = { patch: {}, confidence: {} }
-    }
-
-    if (!data.patch || !data.confidence) {
-      console.log(`[v0] Invalid response structure for Ora #${oraNumber}, using defaults`)
-      data = { patch: {}, confidence: {} }
-    }
-
-    setCache(cacheKey, data)
-    console.log(`[v0] Analysis complete for Ora #${oraNumber}`)
-    return json(data, 200)
   } catch (e: any) {
     console.error(`[v0] API error:`, e)
-    const status = e?.status === 429 ? 429 : 500
+    console.error(`[v0] Error stack:`, e?.stack)
 
-    if (status === 500) {
-      console.log(`[v0] Falling back to demo mode due to error`)
-      const demoResponse = generateDemoResponse([])
-      return json(
-        {
-          ...demoResponse,
-          _demo: true,
-          _message: "Service error - using demo analysis",
-          _error: e?.message || "Unknown error",
-        },
-        200,
-      ) // Return 200 instead of 500 to prevent client errors
-    }
-
+    const demoResponse = generateDemoResponse([])
     return json(
       {
-        error: e?.message || "Internal error",
-        status,
-        _demo: status === 429,
-        _message: status === 429 ? "Rate limited - using demo analysis" : "Service error",
+        ...demoResponse,
+        _demo: true,
+        _message: "Error fallback - using demo analysis",
+        _error: e?.message || "Unknown error",
       },
-      status,
+      200,
     )
   }
 }
