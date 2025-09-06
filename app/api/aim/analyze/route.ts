@@ -5,7 +5,6 @@ import type { NextRequest } from "next/server"
 let openai: any
 let getCache: any
 let setCache: any
-let createHash: any
 
 try {
   console.log("[v0] Loading openai...")
@@ -24,15 +23,6 @@ try {
   console.log("[v0] Cache loaded successfully")
 } catch (e) {
   console.error("[v0] Failed to load cache:", e)
-}
-
-try {
-  console.log("[v0] Loading crypto...")
-  const cryptoModule = await import("crypto")
-  createHash = cryptoModule.createHash
-  console.log("[v0] Crypto loaded successfully")
-} catch (e) {
-  console.error("[v0] Failed to load crypto:", e)
 }
 
 type Trait = { key: string; value: string }
