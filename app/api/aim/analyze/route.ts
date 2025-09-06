@@ -162,16 +162,23 @@ function generateDemoResponse(traits: any[]): AIMDelta {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log(`[v0] Starting analysis request`)
+
     const raw = await request.json().catch(() => null)
-    if (!raw) return json({ error: "Invalid JSON body" }, 400)
+    if (!raw) {
+      console.log(`[v0] Invalid JSON body`)
+      return json({ error: "Invalid JSON body" }, 400)
+    }
 
     const parsed = Body.safeParse(raw)
     if (!parsed.success) {
+      console.log(`[v0] Body validation failed:`, parsed.error.format())
       return json({ error: "Invalid body", issues: parsed.error.format() }, 400)
     }
 
     const { oraNumber, imageUrl } = parsed.data
     const traits = toTraitArray(parsed.data.traits)
+    console.log(`[v0] Processing Ora #${oraNumber} with ${traits.length} traits`)
 
     const useDemo = !process.env.OPENAI_API_KEY || process.env.ORAKIT_DEMO_MODE === "true"
 
@@ -195,37 +202,57 @@ export async function POST(request: NextRequest) {
       return json({ ...cachedResult, _cached: true })
     }
 
+    console.log(`[v0] Making OpenAI API call for Ora #${oraNumber}`)
     const resp = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // Updated model name
-      response_format: { type: "json_object" }, // Force JSON response
+      model: "gpt-4o-mini",
+      response_format: { type: "json_object" },
       messages: [
         { role: "system", content: ANALYZER_SYSTEM_PROMPT },
         { role: "user", content: JSON.stringify({ oraNumber, imageUrl, traits }) },
       ],
     })
 
+    console.log(`[v0] OpenAI API call successful for Ora #${oraNumber}`)
     const content = resp.choices?.[0]?.message?.content ?? "{}"
     let data: any
     try {
       data = JSON.parse(content)
-    } catch {
+    } catch (parseError) {
+      console.log(`[v0] JSON parse error for Ora #${oraNumber}:`, parseError)
       data = { patch: {}, confidence: {} }
     }
 
     if (!data.patch || !data.confidence) {
+      console.log(`[v0] Invalid response structure for Ora #${oraNumber}, using defaults`)
       data = { patch: {}, confidence: {} }
     }
 
     setCache(cacheKey, data)
+    console.log(`[v0] Analysis complete for Ora #${oraNumber}`)
     return json(data, 200)
   } catch (e: any) {
-    console.error("API error:", e)
+    console.error(`[v0] API error:`, e)
     const status = e?.status === 429 ? 429 : 500
+
+    if (status === 500) {
+      console.log(`[v0] Falling back to demo mode due to error`)
+      const demoResponse = generateDemoResponse([])
+      return json(
+        {
+          ...demoResponse,
+          _demo: true,
+          _message: "Service error - using demo analysis",
+          _error: e?.message || "Unknown error",
+        },
+        200,
+      ) // Return 200 instead of 500 to prevent client errors
+    }
+
     return json(
       {
         error: e?.message || "Internal error",
         status,
-        _demo: status === 429, // Trigger demo mode on rate limit
+        _demo: status === 429,
         _message: status === 429 ? "Rate limited - using demo analysis" : "Service error",
       },
       status,

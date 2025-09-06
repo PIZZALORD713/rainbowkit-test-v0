@@ -7,6 +7,7 @@ interface ChatOptions {
   model?: string
   temperature?: number
   max_tokens?: number
+  response_format?: { type: string }
 }
 
 interface ImageOptions {
@@ -60,7 +61,7 @@ export async function chat(messages: ChatMessage[], options: ChatOptions = {}) {
         messages,
         temperature: options.temperature || 0.7,
         max_tokens: options.max_tokens || 1000,
-        response_format: { type: "json_object" },
+        response_format: options.response_format || { type: "json_object" },
       }),
     })
 
@@ -128,6 +129,7 @@ export const openai = {
           model: params.model,
           temperature: params.temperature,
           max_tokens: params.max_tokens,
+          response_format: params.response_format,
         })
 
         return {
