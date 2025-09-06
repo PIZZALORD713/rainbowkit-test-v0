@@ -1,6 +1,25 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { chat } from "@/lib/openai"
+import { getCache, setCache } from "@/lib/aim-cache"
+import { createHash } from "crypto"
 import type { AIMDelta } from "@/types/aim"
+
+type TraitsObj = Record<string, string>
+type Trait = { key: string; value: string; trait_type?: string; value?: string }
+
+function toTraitArray(traits: TraitsObj | Trait[] | undefined): Trait[] {
+  if (!traits) return []
+  if (Array.isArray(traits)) return traits
+  return Object.entries(traits).map(([key, value]) => ({ key, value, trait_type: key }))
+}
+
+function safeParseJSON(jsonString: string) {
+  try {
+    return JSON.parse(jsonString)
+  } catch {
+    return null
+  }
+}
 
 const ANALYZER_SYSTEM_PROMPT = `You are an Ora identity analyst. Analyze NFT traits and image to suggest Avatar Identity Model fields.
 
@@ -141,7 +160,7 @@ function generateDemoResponse(traits: any[]): AIMDelta {
 }
 
 export async function POST(request: NextRequest) {
-  let requestData: { oraNumber: string; traits: any[]; imageUrl?: string }
+  let requestData: { oraNumber: string; traits: any; imageUrl?: string }
 
   try {
     try {
@@ -157,11 +176,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields: oraNumber, traits" }, { status: 400 })
     }
 
+    const traitsArray = toTraitArray(traits)
+
     const useDemo = !process.env.OPENAI_API_KEY || process.env.ORAKIT_DEMO_MODE === "true"
 
     if (useDemo) {
       console.log(`[v0] Using demo mode for Ora #${oraNumber}`)
-      const demoResponse = generateDemoResponse(traits)
+      const demoResponse = generateDemoResponse(traitsArray)
 
       // Add a small delay to simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 2000))
@@ -173,11 +194,21 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Check rate limiting (simple in-memory cache for demo)
-    const cacheKey = `analyze_${oraNumber}_${JSON.stringify(traits)}`
+    const cacheKey = createHash("sha1")
+      .update(JSON.stringify({ traits: traitsArray, imageUrl }))
+      .digest("hex")
+
+    const cachedResult = getCache(cacheKey)
+    if (cachedResult) {
+      console.log(`[v0] Cache hit for Ora #${oraNumber}`)
+      return NextResponse.json({
+        ...cachedResult,
+        _cached: true,
+      })
+    }
 
     const userPrompt = `Analyze Ora #${oraNumber}:
-Traits: ${JSON.stringify(traits, null, 2)}
+Traits: ${JSON.stringify(traitsArray, null, 2)}
 ${imageUrl ? `Image: ${imageUrl}` : ""}
 
 Generate AIM suggestions based on these traits.`
@@ -194,14 +225,11 @@ Generate AIM suggestions based on these traits.`
         },
       )
 
-      // Parse JSON response
-      let aimDelta: AIMDelta
-      try {
-        aimDelta = JSON.parse(response)
-      } catch (parseError) {
+      const aimDelta = safeParseJSON(response)
+      if (!aimDelta || !aimDelta.patch) {
         console.error("Failed to parse AI response:", response)
         console.log(`[v0] AI response parse failed, falling back to demo mode for Ora #${oraNumber}`)
-        const demoResponse = generateDemoResponse(traits)
+        const demoResponse = generateDemoResponse(traitsArray)
         return NextResponse.json({
           ...demoResponse,
           _demo: true,
@@ -209,12 +237,14 @@ Generate AIM suggestions based on these traits.`
         })
       }
 
+      setCache(cacheKey, aimDelta)
+
       return NextResponse.json(aimDelta)
     } catch (openaiError) {
       console.error("OpenAI API error:", openaiError)
 
       console.log(`[v0] OpenAI error, falling back to demo mode for Ora #${oraNumber}`)
-      const demoResponse = generateDemoResponse(traits)
+      const demoResponse = generateDemoResponse(traitsArray)
 
       let errorMessage = "AI temporarily unavailable - using demo analysis"
       let retryAfter = 60
