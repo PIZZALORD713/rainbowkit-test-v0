@@ -7,6 +7,11 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
+import { AIMAutofill } from "@/components/aim-autofill"
+import { PromptStudio } from "@/components/prompt-studio"
+import { AIMStorage } from "@/lib/aim-storage"
+import { mergeAIM } from "@/lib/aim-merge"
+import type { AIMDelta, AIM } from "@/types/aim"
 
 export type Ora = {
   name: string
@@ -26,6 +31,18 @@ export type OraCardProps = {
   onToggleFavorite: () => void
   onToggleSelection?: (checked: boolean) => void
   onOpenAIMEditor: () => void
+}
+
+const isAIAvailable = () => {
+  // This would be set by a server component or API route that checks for OPENAI_API_KEY
+  const available = typeof window !== "undefined" && (window as any).__AI_AVAILABLE !== false
+  console.log(
+    "[v0] AI availability check:",
+    available,
+    "window.__AI_AVAILABLE:",
+    typeof window !== "undefined" ? (window as any).__AI_AVAILABLE : "server-side",
+  )
+  return available
 }
 
 const getTypeGradient = (type: string) => {
@@ -90,6 +107,66 @@ export function OraCard({
 }: OraCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
+  const handleAIMAutofill = (delta: AIMDelta, accepted: Record<string, boolean>) => {
+    console.log("[v0] handleAIMAutofill called with delta:", delta, "accepted:", accepted)
+    try {
+      // Get existing AIM or create new one
+      const existingAIM = AIMStorage.getByOraNumber(ora.oraNumber)
+      let baseAIM: AIM
+
+      if (existingAIM) {
+        // Convert existing AIMFile to AIM format
+        baseAIM = {
+          meta: { oraNumber: Number.parseInt(ora.oraNumber), source: "user", updatedAt: existingAIM.updatedAt },
+          personality: {
+            primary: existingAIM.personality.primaryTraits,
+            secondary: existingAIM.personality.secondaryTraits,
+            alignment: existingAIM.personality.alignment,
+          },
+          backstory: {
+            origin: existingAIM.backstory.origin,
+            beats: existingAIM.backstory.formativeEvents,
+          },
+          abilities: {
+            strengths: existingAIM.abilities.strengths,
+            weaknesses: existingAIM.abilities.weaknesses,
+            skills: existingAIM.abilities.skills.map((s) => s.name),
+          },
+          behavior: {
+            speech: existingAIM.behavior.speechPatterns,
+            mannerisms: existingAIM.behavior.mannerisms,
+          },
+          visuals: {
+            palette: [], // Could be derived from traits
+            motifs: existingAIM.appearance.distinctiveFeatures,
+          },
+        }
+      } else {
+        // Create new base AIM
+        baseAIM = {
+          meta: { oraNumber: Number.parseInt(ora.oraNumber), source: "ai", updatedAt: new Date().toISOString() },
+          personality: { primary: [] },
+          backstory: {},
+          abilities: {},
+          behavior: {},
+          visuals: {},
+        }
+      }
+
+      // Merge AI suggestions
+      const mergedAIM = mergeAIM(baseAIM, delta, accepted)
+
+      // Convert back to AIMFile format and save
+      // This is a simplified conversion - in practice you'd want more robust mapping
+      console.log("[v0] AI suggestions applied:", mergedAIM)
+
+      // Trigger AIM editor to show the updated data
+      onOpenAIMEditor()
+    } catch (error) {
+      console.error("[v0] Error applying AI suggestions:", error)
+    }
+  }
+
   // Sort traits in the specified order: Background → Type → Special → Eyes → Others
   const traitEntries = Object.entries(ora.traits)
   const sortedTraits = [...traitEntries].sort(([keyA], [keyB]) => {
@@ -128,6 +205,9 @@ export function OraCard({
     setIsExpanded(!isExpanded)
     console.log("[v0] Trait expansion toggled to:", !isExpanded)
   }
+
+  const aiAvailable = isAIAvailable()
+  console.log("[v0] AI available for Ora", ora.oraNumber, ":", aiAvailable)
 
   return (
     <div
@@ -260,35 +340,88 @@ export function OraCard({
           </button>
 
           {hasAIM ? (
-            <div className="grid grid-cols-2 gap-2">
-              <Link href={`/character/${ora.oraNumber}`} className="flex-1">
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <Link href={`/character/${ora.oraNumber}`} className="flex-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full h-10 flex items-center justify-center gap-2 bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-400 transition-all duration-200 rounded-md"
+                  >
+                    <Eye className="w-4 h-4" />
+                    View Profile
+                  </Button>
+                </Link>
                 <Button
                   size="sm"
-                  variant="outline"
-                  className="w-full h-10 flex items-center justify-center gap-2 bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-400 transition-all duration-200 rounded-md"
+                  className="h-10 flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
+                  onClick={onOpenAIMEditor}
                 >
-                  <Eye className="w-4 h-4" />
-                  View Profile
+                  <FileText className="w-4 h-4" />
+                  Edit AIM
                 </Button>
-              </Link>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div
+                  className="relative z-10"
+                  onClick={(e) => {
+                    console.log("[v0] AIMAutofill container clicked for Ora", ora.oraNumber)
+                    e.stopPropagation()
+                  }}
+                >
+                  <AIMAutofill
+                    oraNumber={ora.oraNumber}
+                    traits={ora.traits}
+                    imageUrl={ora.image}
+                    onApply={handleAIMAutofill}
+                    disabled={!aiAvailable}
+                  />
+                </div>
+                <PromptStudio
+                  aim={{
+                    meta: {
+                      oraNumber: Number.parseInt(ora.oraNumber),
+                      source: "user",
+                      updatedAt: new Date().toISOString(),
+                    },
+                    personality: { primary: [] },
+                    backstory: {},
+                    abilities: {},
+                    behavior: {},
+                    visuals: {},
+                  }}
+                  disabled={!aiAvailable}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
               <Button
                 size="sm"
-                className="h-10 flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
+                className="w-full h-12 flex items-center justify-center gap-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
                 onClick={onOpenAIMEditor}
               >
                 <FileText className="w-4 h-4" />
-                Edit AIM
+                Create AIM Profile
               </Button>
+
+              <div
+                className="relative z-10"
+                onClick={(e) => {
+                  console.log("[v0] AIMAutofill container clicked for Ora", ora.oraNumber, "(no AIM)")
+                  e.stopPropagation()
+                }}
+              >
+                <AIMAutofill
+                  oraNumber={ora.oraNumber}
+                  traits={ora.traits}
+                  imageUrl={ora.image}
+                  onApply={handleAIMAutofill}
+                  disabled={!aiAvailable}
+                />
+              </div>
             </div>
-          ) : (
-            <Button
-              size="sm"
-              className="w-full h-12 flex items-center justify-center gap-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
-              onClick={onOpenAIMEditor}
-            >
-              <FileText className="w-4 h-4" />
-              Create AIM Profile
-            </Button>
           )}
         </div>
       </div>

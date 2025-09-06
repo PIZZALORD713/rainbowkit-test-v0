@@ -16,6 +16,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <head>
         <link rel="stylesheet" href="https://unpkg.com/@rainbow-me/rainbowkit@2.2.8/dist/index.css" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              fetch('/api/ai-status')
+                .then(res => res.json())
+                .then(data => { window.__AI_AVAILABLE = data.aiAvailable })
+                .catch(() => { window.__AI_AVAILABLE = false })
+            `,
+          }}
+        />
       </head>
       <body>
         <Providers>{children}</Providers>

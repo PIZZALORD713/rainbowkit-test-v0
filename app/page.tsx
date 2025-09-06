@@ -15,6 +15,7 @@ import { FilterPanel } from "@/components/filter-panel"
 import { useFilterStore } from "@/lib/store"
 import Link from "next/link"
 import { OraCard } from "@/components/OraCard"
+import ChatAgent from "@/components/chat-agent"
 
 interface Ora {
   name: string
@@ -543,6 +544,9 @@ export default function SugartownOraDashboard() {
             </div>
           </div>
         </div>
+
+        {/* ChatAgent Component */}
+        <ChatAgent />
       </main>
 
       {/* AIM Editor Modal */}
