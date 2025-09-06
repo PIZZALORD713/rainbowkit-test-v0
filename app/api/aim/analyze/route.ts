@@ -143,9 +143,15 @@ async function withBackoff<T>(fn: () => Promise<T>, max = 4): Promise<T> {
     } catch (e: any) {
       const code = e?.status || e?.code
       const retryAfterSec =
-        Number(e?.headers?.get?.("retry-after")) || Number(e?.response?.headers?.get?.("retry-after")) || 0
+        Number(e?.headers?.get?.("retry-after")) ||
+        Number(e?.response?.headers?.get?.("retry-after")) ||
+        Number(e?.headers?.["retry-after"]) ||
+        Number(e?.response?.headers?.["retry-after"]) ||
+        0
+
       if (code === 429 && i < max - 1) {
         const wait = retryAfterSec ? retryAfterSec * 1000 : delay + Math.floor(Math.random() * 250)
+        console.log(`[v0] Rate limited, waiting ${wait}ms (attempt ${i + 1}/${max})`)
         await new Promise((r) => setTimeout(r, wait))
         delay *= 2
         continue
@@ -226,24 +232,20 @@ export async function POST(request: NextRequest) {
     const task = enqueue(async () => {
       try {
         const traitText = traits.map((t) => `${t.key}: ${t.value}`).join(", ")
-        const prompt = `Analyze this Sugartown Ora NFT:
-Traits: ${traitText}
-${imageUrl ? `Image: ${imageUrl}` : ""}
+        const prompt = `Ora #${oraNumber} traits: ${traitText}${imageUrl ? ` | Image: ${imageUrl}` : ""}`
 
-Suggest Avatar Identity Model fields based on these traits.`
-
-        console.log(`[v0] Calling OpenAI with prompt for Ora #${oraNumber}`)
+        console.log(`[v0] Calling OpenAI with optimized prompt for Ora #${oraNumber}`)
 
         const response = await withBackoff(async () => {
           return openai.chat.completions.create({
-            model: "gpt-4o-mini",
+            model: "gpt-4o-mini", // Using most cost-effective model
             messages: [
               { role: "system", content: ANALYZER_SYSTEM_PROMPT },
               { role: "user", content: prompt },
             ],
             response_format: { type: "json_object" },
-            temperature: 0,
-            max_tokens: 400, // Reduced token limit
+            temperature: 0, // Deterministic output
+            max_tokens: 400, // Reduced token limit for efficiency
           })
         })
 
@@ -279,7 +281,6 @@ Suggest Avatar Identity Model fields based on these traits.`
       } catch (apiError: any) {
         console.error(`[v0] OpenAI API error:`, apiError)
 
-        // Fall back to demo on API errors
         const demoResponse = generateDemoResponse(traits)
         const result = {
           ...demoResponse,
