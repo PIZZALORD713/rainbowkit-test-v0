@@ -2,10 +2,7 @@ export const runtime = "nodejs" // avoid Edge for OpenAI SDK
 
 import type { NextRequest } from "next/server"
 import { createHash } from "crypto"
-
-let openai: any
-let getCache: any
-let setCache: any
+import { openai } from "@/lib/openai"
 
 let q = Promise.resolve()
 function enqueue<T>(fn: () => Promise<T>): Promise<T> {
@@ -16,25 +13,6 @@ function enqueue<T>(fn: () => Promise<T>): Promise<T> {
 
 const cache = new Map<string, any>()
 const inFlight = new Map<string, Promise<any>>()
-
-try {
-  console.log("[v0] Loading openai...")
-  const openaiModule = await import("@/lib/openai")
-  openai = openaiModule.openai
-  console.log("[v0] OpenAI loaded successfully")
-} catch (e) {
-  console.error("[v0] Failed to load openai:", e)
-}
-
-try {
-  console.log("[v0] Loading cache...")
-  const cacheModule = await import("@/lib/aim-cache")
-  getCache = cacheModule.getCache
-  setCache = cacheModule.setCache
-  console.log("[v0] Cache loaded successfully")
-} catch (e) {
-  console.error("[v0] Failed to load cache:", e)
-}
 
 type Trait = { key: string; value: string }
 const toTraitArray = (t: Record<string, string> | Trait[]): Trait[] =>
@@ -214,13 +192,13 @@ export async function POST(request: NextRequest) {
 
     console.log(`[v0] Making OpenAI API call for Ora #${oraNumber}`)
 
-    if (!openai) {
-      console.error(`[v0] OpenAI client not available`)
+    if (!openai || !process.env.OPENAI_API_KEY) {
+      console.error(`[v0] OpenAI client not available or API key missing`)
       const demoResponse = generateDemoResponse(traits)
       const result = {
         ...demoResponse,
         _demo: true,
-        _message: "OpenAI client unavailable - using demo",
+        _message: "OpenAI unavailable - using demo",
       }
 
       cache.set(key, result)

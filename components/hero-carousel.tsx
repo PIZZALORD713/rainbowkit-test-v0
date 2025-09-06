@@ -212,7 +212,7 @@ export default function HeroCarousel({ onSearchClick, onConnectedWalletClick }: 
               </div>
 
               <div className="min-h-[60px] flex items-start justify-end">
-                <p className="text-lg text-white/90 leading-relaxed max-w-xl transition-all duration-500 ease-out text-right">
+                <p className="text-lg text-white leading-relaxed max-w-xl transition-all duration-500 ease-out text-right">
                   {currentSlideData.description}
                 </p>
               </div>
