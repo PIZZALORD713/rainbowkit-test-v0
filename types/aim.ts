@@ -98,3 +98,26 @@ export interface AIMTemplate {
   category: string
   template: Partial<AIMFile>
 }
+
+export type AIM = {
+  meta: { oraNumber: number; source: "user" | "ai" | "merged"; updatedAt: string }
+  personality: { primary: string[]; secondary?: string[]; alignment?: string }
+  backstory: { origin?: string; beats?: string[] }
+  abilities: { strengths?: string[]; weaknesses?: string[]; skills?: string[] }
+  behavior: { speech?: string; mannerisms?: string[] }
+  visuals: { palette?: string[]; motifs?: string[]; doNotChange?: string[] }
+}
+
+export type AIMDelta = {
+  patch: Partial<AIM>
+  confidence: Record<string, number>
+}
+
+export type PromptBundle = {
+  portrait: string[]
+  action: string[]
+  sticker: string[]
+  wallpaper: string[]
+  negative?: string[]
+  seeds?: string[]
+}

@@ -27,7 +27,8 @@ export default function CustomConnectButton() {
                     <button
                       onClick={openConnectModal}
                       type="button"
-                      className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold px-6 py-2.5 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] flex items-center gap-2"
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-2.5 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] flex items-center gap-2 border border-indigo-700 hover:border-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                      style={{ backgroundColor: "#4f46e5", color: "#ffffff" }}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path
@@ -47,7 +48,8 @@ export default function CustomConnectButton() {
                     <button
                       onClick={openChainModal}
                       type="button"
-                      className="bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white font-semibold px-6 py-2.5 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] flex items-center gap-2"
+                      className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2.5 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] flex items-center gap-2"
+                      style={{ backgroundColor: "#dc2626", color: "#ffffff" }}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path
@@ -66,8 +68,9 @@ export default function CustomConnectButton() {
                   <div className="flex items-center gap-3">
                     <button
                       onClick={openChainModal}
-                      className="bg-white/80 hover:bg-white border border-slate-300 hover:border-slate-400 text-slate-700 hover:text-slate-900 font-medium px-4 py-2.5 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 flex items-center gap-2"
+                      className="bg-white hover:bg-gray-50 border border-slate-300 hover:border-slate-400 text-slate-700 hover:text-slate-900 font-medium px-4 py-2.5 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 flex items-center gap-2"
                       type="button"
+                      style={{ backgroundColor: "#ffffff", color: "#374151" }}
                     >
                       {chain.hasIcon && (
                         <div
@@ -95,7 +98,8 @@ export default function CustomConnectButton() {
                     <button
                       onClick={openAccountModal}
                       type="button"
-                      className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold px-6 py-2.5 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] flex items-center gap-2"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6 py-2.5 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] flex items-center gap-2"
+                      style={{ backgroundColor: "#059669", color: "#ffffff" }}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path
