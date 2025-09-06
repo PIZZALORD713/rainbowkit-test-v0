@@ -157,14 +157,70 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    console.log(`[v0] Would make OpenAI API call for Ora #${oraNumber}, but using demo instead`)
-    const demoResponse = generateDemoResponse(traits)
+    console.log(`[v0] Making OpenAI API call for Ora #${oraNumber}`)
 
-    return json({
-      ...demoResponse,
-      _demo: true,
-      _message: "Temporary demo mode - debugging server issues",
-    })
+    if (!openai) {
+      console.error(`[v0] OpenAI client not available`)
+      const demoResponse = generateDemoResponse(traits)
+      return json({
+        ...demoResponse,
+        _demo: true,
+        _message: "OpenAI client unavailable - using demo",
+      })
+    }
+
+    try {
+      const traitText = traits.map((t) => `${t.key}: ${t.value}`).join(", ")
+      const prompt = `Analyze this Sugartown Ora NFT:
+Traits: ${traitText}
+${imageUrl ? `Image: ${imageUrl}` : ""}
+
+Suggest Avatar Identity Model fields based on these traits.`
+
+      console.log(`[v0] Calling OpenAI with prompt for Ora #${oraNumber}`)
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: ANALYZER_SYSTEM_PROMPT },
+          { role: "user", content: prompt },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+        max_tokens: 1000,
+      })
+
+      console.log(`[v0] OpenAI API call successful for Ora #${oraNumber}`)
+
+      const content = response.choices[0]?.message?.content
+      if (!content) {
+        throw new Error("No content in OpenAI response")
+      }
+
+      let aiResponse
+      try {
+        aiResponse = JSON.parse(content)
+      } catch (e) {
+        console.error(`[v0] Failed to parse OpenAI JSON response:`, e)
+        throw new Error("Invalid JSON from OpenAI")
+      }
+
+      return json({
+        ...aiResponse,
+        _demo: false,
+        _message: "AI analysis complete",
+      })
+    } catch (apiError: any) {
+      console.error(`[v0] OpenAI API error:`, apiError)
+
+      // Fall back to demo on API errors
+      const demoResponse = generateDemoResponse(traits)
+      return json({
+        ...demoResponse,
+        _demo: true,
+        _message: `OpenAI API error: ${apiError.message} - using demo`,
+      })
+    }
   } catch (e: any) {
     console.error(`[v0] API error:`, e)
     console.error(`[v0] Error stack:`, e?.stack)
