@@ -198,7 +198,7 @@ export default function HeroCarousel({ onSearchClick, onConnectedWalletClick }: 
               <div className="flex flex-col sm:flex-row gap-4 min-h-[64px] justify-end">
                 <Button
                   onClick={currentSlideData.primaryCta.action}
-                  className="h-16 px-10 text-lg font-bold bg-gradient-to-r from-green-400 to-cyan-400 hover:from-green-500 hover:to-cyan-500 text-black shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02] rounded-full"
+                  className="h-16 px-10 text-lg font-bold bg-gradient-to-r from-green-400 to-cyan-400 hover:from-green-500 hover:to-cyan-500 text-white shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02] rounded-full"
                 >
                   {currentSlideData.primaryCta.text}
                 </Button>
