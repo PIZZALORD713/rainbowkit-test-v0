@@ -1,29 +1,10 @@
 export const runtime = "nodejs" // avoid Edge for OpenAI SDK
 
 import type { NextRequest } from "next/server"
-
-let openai: any
-let getCache: any
-let setCache: any
-
-try {
-  console.log("[v0] Loading openai...")
-  const openaiModule = await import("@/lib/openai")
-  openai = openaiModule.openai
-  console.log("[v0] OpenAI loaded successfully")
-} catch (e) {
-  console.error("[v0] Failed to load openai:", e)
-}
-
-try {
-  console.log("[v0] Loading cache...")
-  const cacheModule = await import("@/lib/aim-cache")
-  getCache = cacheModule.getCache
-  setCache = cacheModule.setCache
-  console.log("[v0] Cache loaded successfully")
-} catch (e) {
-  console.error("[v0] Failed to load cache:", e)
-}
+import openai from "@/lib/openai"
+import { getCache, setCache } from "@/lib/aim-cache"
+import { createHash } from "node:crypto"
+import { orakitMCPClient } from "@/lib/mcp-client"
 
 type Trait = { key: string; value: string }
 const toTraitArray = (t: Record<string, string> | Trait[]): Trait[] =>
@@ -35,6 +16,84 @@ const json = (data: unknown, status = 200) =>
     headers: { "content-type": "application/json; charset=utf-8" },
   })
 
+const AIM_ANALYSIS_SCHEMA = {
+  type: "object",
+  properties: {
+    patch: {
+      type: "object",
+      properties: {
+        personality: {
+          type: "object",
+          properties: {
+            primary: {
+              type: "array",
+              items: { type: "string" },
+              description: "Primary personality traits (2-4 words each)",
+            },
+            alignment: {
+              type: "string",
+              description: "Moral alignment (e.g., Chaotic Good, Neutral)",
+            },
+          },
+        },
+        backstory: {
+          type: "object",
+          properties: {
+            origin: { type: "string", description: "Character origin story" },
+            motivation: { type: "string", description: "Primary motivation" },
+          },
+        },
+        abilities: {
+          type: "object",
+          properties: {
+            strengths: {
+              type: "array",
+              items: { type: "string" },
+              description: "Character abilities and strengths",
+            },
+          },
+        },
+        behavior: {
+          type: "object",
+          properties: {
+            quirks: {
+              type: "array",
+              items: { type: "string" },
+              description: "Behavioral quirks and mannerisms",
+            },
+          },
+        },
+        visuals: {
+          type: "object",
+          properties: {
+            palette: {
+              type: "array",
+              items: { type: "string" },
+              description: "Color palette associated with character",
+            },
+            motifs: {
+              type: "array",
+              items: { type: "string" },
+              description: "Visual motifs and symbols",
+            },
+          },
+        },
+      },
+    },
+    confidence: {
+      type: "object",
+      additionalProperties: {
+        type: "number",
+        minimum: 0.1,
+        maximum: 1.0,
+      },
+      description: "Confidence scores for each suggested field",
+    },
+  },
+  required: ["patch", "confidence"],
+  additionalProperties: false,
+}
+
 const ANALYZER_SYSTEM_PROMPT = `You are an Ora identity analyst. Analyze NFT traits and image to suggest Avatar Identity Model fields.
 
 Rules:
@@ -44,24 +103,9 @@ Rules:
 - No weapons or violence
 - Style: solarpunk sci-fi, optimistic future
 - Confidence scores: 0.1-1.0 based on trait clarity
+- Include color palette and visual motifs when possible
 
-Example output:
-{
-  "patch": {
-    "personality": {
-      "primary": ["curious", "adventurous"],
-      "alignment": "Chaotic Good"
-    },
-    "abilities": {
-      "strengths": ["quick thinking", "adaptable"]
-    }
-  },
-  "confidence": {
-    "personality.primary": 0.8,
-    "personality.alignment": 0.6,
-    "abilities.strengths": 0.7
-  }
-}`
+Focus on creating engaging, positive character profiles that reflect the NFT's unique traits.`
 
 const DEMO_RESPONSES: Record<string, any> = {
   void: {
@@ -140,6 +184,7 @@ export async function POST(request: NextRequest) {
     const oraNumber = raw?.oraNumber || 0
     const imageUrl = raw?.imageUrl
     const traits = toTraitArray(raw?.traits || {})
+    const previousResponseId = raw?.previous_response_id
 
     console.log(`[v0] Processing Ora #${oraNumber} with ${traits.length} traits`)
 
@@ -157,58 +202,88 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    console.log(`[v0] Making OpenAI API call for Ora #${oraNumber}`)
-
-    if (!openai) {
-      console.error(`[v0] OpenAI client not available`)
-      const demoResponse = generateDemoResponse(traits)
-      return json({
-        ...demoResponse,
-        _demo: true,
-        _message: "OpenAI client unavailable - using demo",
-      })
-    }
+    const traitText = traits.map((t) => `${t.key}: ${t.value}`).join(", ")
+    const cacheKey = createHash("sha256")
+      .update(`${oraNumber}-${traitText}-${imageUrl || ""}-${previousResponseId || ""}`)
+      .digest("hex")
 
     try {
-      const traitText = traits.map((t) => `${t.key}: ${t.value}`).join(", ")
+      const cached = await getCache(cacheKey)
+      if (cached) {
+        console.log(`[v0] Using cached analysis for Ora #${oraNumber}`)
+        return json({
+          ...cached,
+          _demo: false,
+          _cached: true,
+          _message: "Cached AI analysis",
+        })
+      }
+    } catch (cacheError) {
+      console.log(`[v0] Cache read failed, proceeding with API call:`, cacheError)
+    }
+
+    console.log(`[v0] Making OpenAI Responses API call for Ora #${oraNumber}`)
+
+    try {
       const prompt = `Analyze this Sugartown Ora NFT:
 Traits: ${traitText}
-${imageUrl ? `Image: ${imageUrl}` : ""}
 
-Suggest Avatar Identity Model fields based on these traits.`
+Suggest Avatar Identity Model fields based on these traits. Focus on the character's personality, backstory, abilities, behavior, and visual elements.`
 
-      console.log(`[v0] Calling OpenAI with prompt for Ora #${oraNumber}`)
+      let input = [
+        { role: "system" as const, content: ANALYZER_SYSTEM_PROMPT },
+        {
+          role: "user" as const,
+          content: imageUrl
+            ? [
+                { type: "text" as const, text: prompt },
+                { type: "image_url" as const, image_url: { url: imageUrl } },
+              ]
+            : prompt,
+        },
+      ]
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: ANALYZER_SYSTEM_PROMPT },
-          { role: "user", content: prompt },
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.7,
-        max_tokens: 1000,
-      })
-
-      console.log(`[v0] OpenAI API call successful for Ora #${oraNumber}`)
-
-      const content = response.choices[0]?.message?.content
-      if (!content) {
-        throw new Error("No content in OpenAI response")
+      if (process.env.ORAKIT_MCP_SERVER_URL) {
+        input = await orakitMCPClient.enhancePromptWithTools(input, ["opensea_get_ora"])
       }
 
-      let aiResponse
+      console.log(`[v0] Calling OpenAI Responses API with ${imageUrl ? "vision" : "text"} input for Ora #${oraNumber}`)
+
+      const response = await openai.beta.chat.completions.parse({
+        model: "gpt-4o-mini",
+        messages: input,
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "aim_analysis",
+            schema: AIM_ANALYSIS_SCHEMA,
+            strict: true,
+          },
+        },
+        temperature: 0.7,
+        max_tokens: 1500,
+        ...(previousResponseId && { previous_response_id: previousResponseId }),
+      })
+
+      console.log(`[v0] OpenAI Responses API call successful for Ora #${oraNumber}`)
+
+      const aiResponse = response.choices[0]?.message?.parsed
+      if (!aiResponse) {
+        throw new Error("No parsed content in OpenAI response")
+      }
+
       try {
-        aiResponse = JSON.parse(content)
-      } catch (e) {
-        console.error(`[v0] Failed to parse OpenAI JSON response:`, e)
-        throw new Error("Invalid JSON from OpenAI")
+        await setCache(cacheKey, aiResponse)
+        console.log(`[v0] Cached analysis for Ora #${oraNumber}`)
+      } catch (cacheError) {
+        console.log(`[v0] Cache write failed:`, cacheError)
       }
 
       return json({
         ...aiResponse,
         _demo: false,
         _message: "AI analysis complete",
+        response_id: response.id,
       })
     } catch (apiError: any) {
       console.error(`[v0] OpenAI API error:`, apiError)
