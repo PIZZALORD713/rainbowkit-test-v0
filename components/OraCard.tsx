@@ -212,7 +212,7 @@ export function OraCard({
   return (
     <div
       className={cn(
-        "group relative overflow-hidden rounded-2xl bg-gradient-to-br shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:scale-[1.02] hover:-translate-y-1",
+        "group relative overflow-hidden rounded-2xl bg-gradient-to-br shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:scale-[1.02] hover:-translate-y-1 min-h-[600px] flex flex-col",
         getTypeGradient(oraType),
       )}
     >
@@ -281,37 +281,39 @@ export function OraCard({
       </div>
 
       {/* Traits */}
-      <div className="px-4 pb-4">
-        <div className="flex flex-wrap gap-2 mb-4">
-          {visibleTraits.map(([key, value], index) => (
-            <TraitChip key={`${key}-${index}`} traitKey={key} traitValue={value} />
-          ))}
+      <div className="px-4 pb-4 flex-1 flex flex-col">
+        <div className={cn("mb-4", isExpanded ? "min-h-[120px]" : "h-[80px]")}>
+          <div className="flex flex-wrap gap-2">
+            {visibleTraits.map(([key, value], index) => (
+              <TraitChip key={`${key}-${index}`} traitKey={key} traitValue={value} />
+            ))}
 
-          {hasMoreTraits && (
-            <button
-              type="button"
-              onClick={handleTraitExpansion}
-              aria-expanded={isExpanded}
-              aria-label={isExpanded ? "Show fewer traits" : "Show more traits"}
-              className="inline-flex items-center gap-1 px-2.5 py-1 h-auto bg-white/60 hover:bg-white/80 rounded-full border border-slate-200/50 text-xs font-medium text-slate-600 hover:text-slate-800 focus:ring-2 focus:ring-slate-400 focus:ring-offset-1 cursor-pointer"
-            >
-              {isExpanded ? (
-                <>
-                  Show less
-                  <ChevronUp className="w-3 h-3" />
-                </>
-              ) : (
-                <>
-                  +{sortedTraits.length - 4} more
-                  <ChevronDown className="w-3 h-3" />
-                </>
-              )}
-            </button>
-          )}
+            {hasMoreTraits && (
+              <button
+                type="button"
+                onClick={handleTraitExpansion}
+                aria-expanded={isExpanded}
+                aria-label={isExpanded ? "Show fewer traits" : "Show more traits"}
+                className="inline-flex items-center gap-1 px-2.5 py-1 h-auto bg-white/60 hover:bg-white/80 rounded-full border border-slate-200/50 text-xs font-medium text-slate-600 hover:text-slate-800 focus:ring-2 focus:ring-slate-400 focus:ring-offset-1 cursor-pointer"
+              >
+                {isExpanded ? (
+                  <>
+                    Show less
+                    <ChevronUp className="w-3 h-3" />
+                  </>
+                ) : (
+                  <>
+                    +{sortedTraits.length - 4} more
+                    <ChevronDown className="w-3 h-3" />
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Actions */}
-        <div className={`space-y-3 ${selectionMode ? "opacity-50 pointer-events-none" : ""}`}>
+        <div className={`space-y-3 mt-auto ${selectionMode ? "opacity-50 pointer-events-none" : ""}`}>
           <button
             type="button"
             className="relative z-10 w-full flex items-center justify-center gap-2 h-10 bg-white/90 hover:bg-white border border-slate-300 hover:border-slate-400 text-slate-700 hover:text-slate-900 transition-all duration-200 rounded-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
