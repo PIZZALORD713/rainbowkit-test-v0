@@ -1,12 +1,11 @@
 export const runtime = "nodejs" // avoid Edge for OpenAI SDK
 
-console.log("[v0] ======== ANALYZE ROUTE MODULE LOADING ========")
-
 import type { NextRequest } from "next/server"
 import openai from "@/lib/openai"
 import { getCache, setCache } from "@/lib/aim-cache"
 import { createHash } from "node:crypto"
 
+console.log("[v0] ======== ANALYZE ROUTE MODULE LOADING ========")
 console.log("[v0] ======== ANALYZE ROUTE MODULE LOADED ========")
 
 type Trait = { key: string; value: string }
