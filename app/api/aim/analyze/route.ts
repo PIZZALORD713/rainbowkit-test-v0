@@ -2,6 +2,7 @@ export const runtime = "nodejs"
 
 import type { NextRequest } from "next/server"
 import { generateObject } from "ai"
+import { createOpenAI } from "@ai-sdk/openai"
 import { z } from "zod"
 
 console.log("[v0] ======== ANALYZE ROUTE MODULE LOADING ========")
@@ -165,6 +166,10 @@ async function analyzeWithAI(oraNumber: number, traits: any[], imageUrl?: string
   try {
     console.log(`[v0] Calling AI SDK for Ora #${oraNumber}`)
 
+    const openai = createOpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    })
+
     // Build trait description
     const traitDesc = traits.map((t) => `${t.key || "unknown"}: ${t.value || "unknown"}`).join(", ")
     console.log(`[v0] Traits: ${traitDesc}`)
@@ -177,7 +182,7 @@ Traits: ${traitDesc}
 Base your suggestions on the traits provided. Be creative but consistent with the Ora's characteristics. Provide confidence scores (0.0-1.0) for each field based on how well the traits support your suggestions.`
 
     const { object } = await generateObject({
-      model: "openai/gpt-4o-mini",
+      model: openai("gpt-4o-mini"),
       schema: aimSuggestionSchema,
       prompt,
       temperature: 0.7,
