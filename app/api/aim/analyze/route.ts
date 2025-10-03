@@ -1,6 +1,8 @@
 export const runtime = "nodejs"
 
 import type { NextRequest } from "next/server"
+import { generateObject } from "ai"
+import { z } from "zod"
 
 console.log("[v0] ======== ANALYZE ROUTE MODULE LOADING ========")
 
@@ -10,6 +12,47 @@ const json = (data: unknown, status = 200) =>
     status,
     headers: { "content-type": "application/json; charset=utf-8" },
   })
+
+const aimSuggestionSchema = z.object({
+  patch: z.object({
+    personality: z.object({
+      primary: z.array(z.string()).describe("2-3 personality traits based on Ora characteristics"),
+      alignment: z.enum([
+        "Lawful Good",
+        "Neutral Good",
+        "Chaotic Good",
+        "Lawful Neutral",
+        "True Neutral",
+        "Chaotic Neutral",
+        "Lawful Evil",
+        "Neutral Evil",
+        "Chaotic Evil",
+      ]),
+    }),
+    backstory: z.object({
+      origin: z.string().describe("Brief origin story based on traits"),
+      motivation: z.string().describe("What drives this Ora"),
+    }),
+    abilities: z.object({
+      strengths: z.array(z.string()).describe("2-3 abilities based on traits"),
+    }),
+    behavior: z.object({
+      quirks: z.array(z.string()).describe("2-3 behavioral quirks"),
+    }),
+    visuals: z.object({
+      palette: z.array(z.string()).describe("3-5 hex color codes"),
+      motifs: z.array(z.string()).describe("2-3 visual motifs"),
+    }),
+  }),
+  confidence: z.object({
+    "personality.primary": z.number().min(0).max(1),
+    "personality.alignment": z.number().min(0).max(1),
+    "backstory.origin": z.number().min(0).max(1),
+    "backstory.motivation": z.number().min(0).max(1),
+    "abilities.strengths": z.number().min(0).max(1),
+    "behavior.quirks": z.number().min(0).max(1),
+  }),
+})
 
 const DEMO_RESPONSES: Record<string, any> = {
   void: {
@@ -120,87 +163,35 @@ async function analyzeWithAI(oraNumber: number, traits: any[], imageUrl?: string
   }
 
   try {
-    // Dynamic import to avoid module loading issues
-    const { default: openai } = await import("@/lib/openai")
-    console.log(`[v0] OpenAI client loaded successfully`)
+    console.log(`[v0] Calling AI SDK for Ora #${oraNumber}`)
 
     // Build trait description
     const traitDesc = traits.map((t) => `${t.key || "unknown"}: ${t.value || "unknown"}`).join(", ")
-
-    console.log(`[v0] Calling OpenAI for Ora #${oraNumber}`)
     console.log(`[v0] Traits: ${traitDesc}`)
 
     const prompt = `You are an expert at creating AI Model (AIM) profiles for Sugartown Oras - unique digital collectibles with distinct traits.
 
-Given this Ora's traits: ${traitDesc}
+Analyze this Ora's traits and suggest values for the AIM profile fields:
+Traits: ${traitDesc}
 
-Analyze these traits and suggest values for the following AIM fields. Return ONLY valid JSON with this exact structure:
+Base your suggestions on the traits provided. Be creative but consistent with the Ora's characteristics. Provide confidence scores (0.0-1.0) for each field based on how well the traits support your suggestions.`
 
-{
-  "patch": {
-    "personality": {
-      "primary": ["trait1", "trait2"],
-      "alignment": "Lawful Good|Neutral Good|Chaotic Good|Lawful Neutral|True Neutral|Chaotic Neutral|Lawful Evil|Neutral Evil|Chaotic Evil"
-    },
-    "backstory": {
-      "origin": "brief origin story",
-      "motivation": "what drives this Ora"
-    },
-    "abilities": {
-      "strengths": ["ability1", "ability2"]
-    },
-    "behavior": {
-      "quirks": ["quirk1", "quirk2"]
-    },
-    "visuals": {
-      "palette": ["#hex1", "#hex2", "#hex3"],
-      "motifs": ["motif1", "motif2"]
-    }
-  },
-  "confidence": {
-    "personality.primary": 0.0-1.0,
-    "personality.alignment": 0.0-1.0,
-    "backstory.origin": 0.0-1.0,
-    "backstory.motivation": 0.0-1.0,
-    "abilities.strengths": 0.0-1.0,
-    "behavior.quirks": 0.0-1.0
-  }
-}
-
-Base your suggestions on the traits provided. Be creative but consistent with the Ora's characteristics.`
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are an expert at analyzing NFT traits and creating detailed character profiles. Always respond with valid JSON only.",
-        },
-        { role: "user", content: prompt },
-      ],
+    const { object } = await generateObject({
+      model: "openai/gpt-4o-mini",
+      schema: aimSuggestionSchema,
+      prompt,
       temperature: 0.7,
-      max_tokens: 1000,
-      response_format: { type: "json_object" },
     })
 
-    const responseText = completion.choices[0]?.message?.content
-    console.log(`[v0] OpenAI response received: ${responseText?.substring(0, 100)}...`)
-
-    if (!responseText) {
-      throw new Error("No response from OpenAI")
-    }
-
-    const parsed = JSON.parse(responseText)
-    console.log(`[v0] Successfully parsed OpenAI response`)
+    console.log(`[v0] AI SDK response received successfully`)
 
     return {
-      ...parsed,
+      ...object,
       _demo: false,
       _message: "AI analysis complete",
     }
   } catch (error: any) {
-    console.error(`[v0] OpenAI error:`, error)
+    console.error(`[v0] AI SDK error:`, error)
     console.error(`[v0] Error message:`, error?.message)
     console.error(`[v0] Error stack:`, error?.stack)
 
@@ -208,7 +199,7 @@ Base your suggestions on the traits provided. Be creative but consistent with th
     return {
       ...generateDemoResponse(traits),
       _demo: true,
-      _reason: `OpenAI error: ${error?.message || "Unknown error"}`,
+      _reason: `AI error: ${error?.message || "Unknown error"}`,
     }
   }
 }
