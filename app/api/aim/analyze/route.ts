@@ -1,7 +1,6 @@
 export const runtime = "nodejs" // avoid Edge for OpenAI SDK
 
 import type { NextRequest } from "next/server"
-import openai from "@/lib/openai"
 import { getCache, setCache } from "@/lib/aim-cache"
 import { createHash } from "node:crypto"
 
@@ -116,6 +115,16 @@ function generateDemoResponse(traits: any[]): any {
   return DEMO_RESPONSES[oraType] || DEMO_RESPONSES.default
 }
 
+async function getOpenAIClient() {
+  try {
+    const { default: openai } = await import("@/lib/openai")
+    return openai
+  } catch (error) {
+    console.error("[v0] Failed to load OpenAI client:", error)
+    return null
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     console.log(`[v0] ========================================`)
@@ -172,6 +181,17 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`[v0] Making OpenAI API call for Ora #${oraNumber}`)
+
+    const openai = await getOpenAIClient()
+    if (!openai) {
+      console.log(`[v0] OpenAI client not available, falling back to demo`)
+      const demoResponse = generateDemoResponse(traits)
+      return json({
+        ...demoResponse,
+        _demo: true,
+        _message: "OpenAI unavailable - using demo",
+      })
+    }
 
     try {
       const prompt = `Analyze this Sugartown Ora NFT:
