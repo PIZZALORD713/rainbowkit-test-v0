@@ -1,20 +1,11 @@
-console.log("[v0] ======== ANALYZE ROUTE MODULE LOADING ========")
-
 export const runtime = "nodejs" // avoid Edge for OpenAI SDK
 
+console.log("[v0] ======== ANALYZE ROUTE MODULE LOADING ========")
+
 import type { NextRequest } from "next/server"
-
-console.log("[v0] Importing OpenAI client...")
 import openai from "@/lib/openai"
-console.log("[v0] OpenAI client imported")
-
-console.log("[v0] Importing cache functions...")
 import { getCache, setCache } from "@/lib/aim-cache"
-console.log("[v0] Cache functions imported")
-
-console.log("[v0] Importing crypto...")
 import { createHash } from "node:crypto"
-console.log("[v0] Crypto imported")
 
 console.log("[v0] ======== ANALYZE ROUTE MODULE LOADED ========")
 
