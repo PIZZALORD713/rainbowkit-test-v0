@@ -11,7 +11,6 @@ const json = (data: unknown, status = 200) =>
     headers: { "content-type": "application/json; charset=utf-8" },
   })
 
-// Demo responses based on Ora type
 const DEMO_RESPONSES: Record<string, any> = {
   void: {
     patch: {
@@ -111,6 +110,109 @@ function generateDemoResponse(traits: any[]): any {
   return DEMO_RESPONSES[oraType] || DEMO_RESPONSES.default
 }
 
+async function analyzeWithAI(oraNumber: number, traits: any[], imageUrl?: string): Promise<any> {
+  const hasApiKey = !!process.env.OPENAI_API_KEY
+  console.log(`[v0] OpenAI API key available: ${hasApiKey}`)
+
+  if (!hasApiKey) {
+    console.log(`[v0] No OpenAI API key - using demo mode`)
+    return { ...generateDemoResponse(traits), _demo: true, _reason: "No API key" }
+  }
+
+  try {
+    // Dynamic import to avoid module loading issues
+    const { default: openai } = await import("@/lib/openai")
+    console.log(`[v0] OpenAI client loaded successfully`)
+
+    // Build trait description
+    const traitDesc = traits.map((t) => `${t.key || "unknown"}: ${t.value || "unknown"}`).join(", ")
+
+    console.log(`[v0] Calling OpenAI for Ora #${oraNumber}`)
+    console.log(`[v0] Traits: ${traitDesc}`)
+
+    const prompt = `You are an expert at creating AI Model (AIM) profiles for Sugartown Oras - unique digital collectibles with distinct traits.
+
+Given this Ora's traits: ${traitDesc}
+
+Analyze these traits and suggest values for the following AIM fields. Return ONLY valid JSON with this exact structure:
+
+{
+  "patch": {
+    "personality": {
+      "primary": ["trait1", "trait2"],
+      "alignment": "Lawful Good|Neutral Good|Chaotic Good|Lawful Neutral|True Neutral|Chaotic Neutral|Lawful Evil|Neutral Evil|Chaotic Evil"
+    },
+    "backstory": {
+      "origin": "brief origin story",
+      "motivation": "what drives this Ora"
+    },
+    "abilities": {
+      "strengths": ["ability1", "ability2"]
+    },
+    "behavior": {
+      "quirks": ["quirk1", "quirk2"]
+    },
+    "visuals": {
+      "palette": ["#hex1", "#hex2", "#hex3"],
+      "motifs": ["motif1", "motif2"]
+    }
+  },
+  "confidence": {
+    "personality.primary": 0.0-1.0,
+    "personality.alignment": 0.0-1.0,
+    "backstory.origin": 0.0-1.0,
+    "backstory.motivation": 0.0-1.0,
+    "abilities.strengths": 0.0-1.0,
+    "behavior.quirks": 0.0-1.0
+  }
+}
+
+Base your suggestions on the traits provided. Be creative but consistent with the Ora's characteristics.`
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are an expert at analyzing NFT traits and creating detailed character profiles. Always respond with valid JSON only.",
+        },
+        { role: "user", content: prompt },
+      ],
+      temperature: 0.7,
+      max_tokens: 1000,
+      response_format: { type: "json_object" },
+    })
+
+    const responseText = completion.choices[0]?.message?.content
+    console.log(`[v0] OpenAI response received: ${responseText?.substring(0, 100)}...`)
+
+    if (!responseText) {
+      throw new Error("No response from OpenAI")
+    }
+
+    const parsed = JSON.parse(responseText)
+    console.log(`[v0] Successfully parsed OpenAI response`)
+
+    return {
+      ...parsed,
+      _demo: false,
+      _message: "AI analysis complete",
+    }
+  } catch (error: any) {
+    console.error(`[v0] OpenAI error:`, error)
+    console.error(`[v0] Error message:`, error?.message)
+    console.error(`[v0] Error stack:`, error?.stack)
+
+    // Fallback to demo mode on error
+    return {
+      ...generateDemoResponse(traits),
+      _demo: true,
+      _reason: `OpenAI error: ${error?.message || "Unknown error"}`,
+    }
+  }
+}
+
 export async function POST(request: NextRequest) {
   console.log(`[v0] ========================================`)
   console.log(`[v0] Analyze API route POST handler called`)
@@ -134,18 +236,11 @@ export async function POST(request: NextRequest) {
 
     console.log(`[v0] Processing Ora #${oraNumber} with ${traits.length} traits`)
 
-    // Simulate AI processing delay
-    await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 2000))
+    const result = await analyzeWithAI(oraNumber, traits, imageUrl)
 
-    const demoResponse = generateDemoResponse(traits)
+    console.log(`[v0] Returning ${result._demo ? "demo" : "AI"} response for Ora #${oraNumber}`)
 
-    console.log(`[v0] Returning demo response for Ora #${oraNumber}`)
-
-    return json({
-      ...demoResponse,
-      _demo: true,
-      _message: "Demo mode - AI analysis simulated",
-    })
+    return json(result)
   } catch (e: any) {
     console.error(`[v0] API error:`, e)
     console.error(`[v0] Error stack:`, e?.stack)
