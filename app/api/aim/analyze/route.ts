@@ -1,9 +1,22 @@
+console.log("[v0] ======== ANALYZE ROUTE MODULE LOADING ========")
+
 export const runtime = "nodejs" // avoid Edge for OpenAI SDK
 
 import type { NextRequest } from "next/server"
+
+console.log("[v0] Importing OpenAI client...")
 import openai from "@/lib/openai"
+console.log("[v0] OpenAI client imported")
+
+console.log("[v0] Importing cache functions...")
 import { getCache, setCache } from "@/lib/aim-cache"
+console.log("[v0] Cache functions imported")
+
+console.log("[v0] Importing crypto...")
 import { createHash } from "node:crypto"
+console.log("[v0] Crypto imported")
+
+console.log("[v0] ======== ANALYZE ROUTE MODULE LOADED ========")
 
 type Trait = { key: string; value: string }
 const toTraitArray = (t: Record<string, string> | Trait[]): Trait[] =>
@@ -115,7 +128,9 @@ function generateDemoResponse(traits: any[]): any {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log(`[v0] API route started`)
+    console.log(`[v0] ========================================`)
+    console.log(`[v0] Analyze API route started`)
+    console.log(`[v0] ========================================`)
 
     let raw: any
     try {
