@@ -68,7 +68,7 @@
     "viem": "latest",
     "wagmi": "latest",
     "ws": "latest",
-    "zod": "^3.24.1",
+    "zod": "^3.25.1",
     "zustand": "latest"
   },
   "devDependencies": {
