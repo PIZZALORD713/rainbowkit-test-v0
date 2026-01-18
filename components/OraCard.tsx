@@ -156,9 +156,109 @@ export function OraCard({
       // Merge AI suggestions
       const mergedAIM = mergeAIM(baseAIM, delta, accepted)
 
-      // Convert back to AIMFile format and save
-      // This is a simplified conversion - in practice you'd want more robust mapping
-      console.log("[v0] AI suggestions applied:", mergedAIM)
+      // Convert merged AIM back to AIMFile format and save
+      const aimFile = existingAIM || {
+        id: `aim-${ora.oraNumber}-${Date.now()}`,
+        oraNumber: ora.oraNumber,
+        oraName: ora.name,
+        oraImage: ora.image,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        characterName: ora.name,
+        personality: {
+          primaryTraits: [],
+          secondaryTraits: [],
+          alignment: "True Neutral" as const,
+          temperament: "",
+          motivations: [],
+          fears: [],
+          quirks: [],
+        },
+        backstory: {
+          origin: "",
+          childhood: "",
+          formativeEvents: [],
+          relationships: [],
+          achievements: [],
+          failures: [],
+        },
+        abilities: {
+          strengths: [],
+          weaknesses: [],
+          specialPowers: [],
+          skills: [],
+        },
+        behavior: {
+          speechPatterns: "",
+          mannerisms: [],
+          habits: [],
+          socialStyle: "Ambivert" as const,
+          conflictResolution: "",
+          decisionMaking: "",
+        },
+        appearance: {
+          distinctiveFeatures: [],
+          clothing: "",
+          accessories: [],
+        },
+        goals: {
+          shortTerm: [],
+          longTerm: [],
+          dreams: [],
+        },
+        tags: [],
+        notes: "",
+        version: "1",
+      }
+
+      // Apply merged data to AIMFile
+      aimFile.updatedAt = new Date().toISOString()
+
+      if (mergedAIM.personality.primary) {
+        aimFile.personality.primaryTraits = [
+          ...new Set([...aimFile.personality.primaryTraits, ...mergedAIM.personality.primary]),
+        ]
+      }
+      if (mergedAIM.personality.secondary) {
+        aimFile.personality.secondaryTraits = [
+          ...new Set([...aimFile.personality.secondaryTraits, ...mergedAIM.personality.secondary]),
+        ]
+      }
+      if (mergedAIM.personality.alignment) {
+        aimFile.personality.alignment = mergedAIM.personality.alignment as any
+      }
+      if (mergedAIM.backstory.origin) {
+        aimFile.backstory.origin = mergedAIM.backstory.origin
+      }
+      if (mergedAIM.backstory.beats) {
+        aimFile.backstory.formativeEvents = [
+          ...new Set([...aimFile.backstory.formativeEvents, ...mergedAIM.backstory.beats]),
+        ]
+      }
+      if (mergedAIM.abilities.strengths) {
+        aimFile.abilities.strengths = [...new Set([...aimFile.abilities.strengths, ...mergedAIM.abilities.strengths])]
+      }
+      if (mergedAIM.abilities.weaknesses) {
+        aimFile.abilities.weaknesses = [
+          ...new Set([...aimFile.abilities.weaknesses, ...mergedAIM.abilities.weaknesses]),
+        ]
+      }
+      if (mergedAIM.behavior.speech) {
+        aimFile.behavior.speechPatterns = mergedAIM.behavior.speech
+      }
+      if (mergedAIM.behavior.mannerisms) {
+        aimFile.behavior.mannerisms = [...new Set([...aimFile.behavior.mannerisms, ...mergedAIM.behavior.mannerisms])]
+      }
+      if (mergedAIM.visuals.motifs) {
+        aimFile.appearance.distinctiveFeatures = [
+          ...new Set([...aimFile.appearance.distinctiveFeatures, ...mergedAIM.visuals.motifs]),
+        ]
+      }
+
+      // Save to storage
+      AIMStorage.save(aimFile)
+
+      console.log("[v0] AI suggestions applied and saved:", aimFile)
 
       // Trigger AIM editor to show the updated data
       onOpenAIMEditor()

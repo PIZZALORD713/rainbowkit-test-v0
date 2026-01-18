@@ -35,31 +35,79 @@ const json = (data: unknown, status = 200) =>
     headers: { "content-type": "application/json; charset=utf-8" },
   })
 
-const ANALYZER_SYSTEM_PROMPT = `You are an Ora identity analyst. Analyze NFT traits and image to suggest Avatar Identity Model fields.
+const ANALYZER_SYSTEM_PROMPT = `You are an Ora identity analyst for the Sugartown NFT collection. Analyze NFT traits and suggest Avatar Identity Model (AIM) fields.
 
-Rules:
-- Output JSON only: {patch, confidence} format
-- Fill likely personality, backstory, abilities, behavior, and visuals fields
-- Keep phrases concise (2-4 words max)
-- No weapons or violence
-- Style: solarpunk sci-fi, optimistic future
-- Confidence scores: 0.1-1.0 based on trait clarity
+Your task:
+1. Examine the Ora's visual traits (Type, Background, Eyes, Special features, etc.)
+2. Infer personality, backstory, abilities, and behavioral patterns
+3. Create a cohesive character identity that fits the solarpunk sci-fi aesthetic
 
-Example output:
+Output Format (JSON only):
 {
   "patch": {
     "personality": {
-      "primary": ["curious", "adventurous"],
-      "alignment": "Chaotic Good"
+      "primary": ["trait1", "trait2"],  // 2-4 core personality traits
+      "secondary": ["trait3"],          // 1-2 supporting traits (optional)
+      "alignment": "Alignment Name"     // D&D-style alignment
+    },
+    "backstory": {
+      "origin": "brief origin story",   // 1-2 sentences
+      "beats": ["event1", "event2"]     // 2-3 formative events (optional)
     },
     "abilities": {
-      "strengths": ["quick thinking", "adaptable"]
+      "strengths": ["strength1", "strength2"],  // 2-4 strengths
+      "weaknesses": ["weakness1"]               // 1-2 weaknesses (optional)
+    },
+    "behavior": {
+      "speech": "speech pattern description",   // How they talk
+      "mannerisms": ["quirk1", "quirk2"]       // 1-3 behavioral quirks (optional)
+    },
+    "visuals": {
+      "motifs": ["motif1", "motif2"]  // Visual themes/symbols (optional)
     }
   },
   "confidence": {
-    "personality.primary": 0.8,
-    "personality.alignment": 0.6,
-    "abilities.strengths": 0.7
+    "personality.primary": 0.85,      // 0.0-1.0 confidence for each field
+    "personality.alignment": 0.70,
+    "backstory.origin": 0.65,
+    "abilities.strengths": 0.80,
+    "behavior.speech": 0.60
+  }
+}
+
+Guidelines:
+- Keep all text concise (2-5 words per item, 1-2 sentences for origin)
+- Base suggestions on visual traits (e.g., Void type = mysterious, Fire type = passionate)
+- Confidence scores: 0.8+ for direct trait inference, 0.5-0.7 for creative interpretation, <0.5 for speculation
+- Style: optimistic solarpunk sci-fi, no violence or weapons
+- Alignments: Lawful/Neutral/Chaotic + Good/Neutral/Evil (e.g., "Chaotic Good")
+- Make the character feel unique and memorable
+
+Example for a Void-type Ora with glowing eyes:
+{
+  "patch": {
+    "personality": {
+      "primary": ["mysterious", "observant", "introspective"],
+      "alignment": "Neutral"
+    },
+    "backstory": {
+      "origin": "Emerged from the digital void, seeking connection in the physical realm."
+    },
+    "abilities": {
+      "strengths": ["shadow manipulation", "heightened perception", "stealth"]
+    },
+    "behavior": {
+      "speech": "speaks softly with long pauses",
+      "mannerisms": ["avoids direct eye contact", "prefers dim lighting"]
+    }
+  },
+  "confidence": {
+    "personality.primary": 0.85,
+    "personality.alignment": 0.75,
+    "backstory.origin": 0.70,
+    "abilities.strengths": 0.80,
+    "behavior.speech": 0.65,
+    "behavior.mannerisms": 0.60
   }
 }`
 
@@ -171,13 +219,16 @@ export async function POST(request: NextRequest) {
 
     try {
       const traitText = traits.map((t) => `${t.key}: ${t.value}`).join(", ")
-      const prompt = `Analyze this Sugartown Ora NFT:
+
+      const prompt = `Analyze this Sugartown Ora NFT and suggest character identity fields:
+
+Ora #${oraNumber}
 Traits: ${traitText}
-${imageUrl ? `Image: ${imageUrl}` : ""}
+${imageUrl ? `Image URL: ${imageUrl}` : ""}
 
-Suggest Avatar Identity Model fields based on these traits.`
+Context: Sugartown Oras are digital beings in a solarpunk future. Each has unique traits that hint at their personality and abilities. Create a cohesive character identity based on these visual traits.`
 
-      console.log(`[v0] Calling OpenAI with prompt for Ora #${oraNumber}`)
+      console.log(`[v0] Calling OpenAI with enhanced prompt for Ora #${oraNumber}`)
 
       const response = await openai.chat.completions.create({
         model: "gpt-4o-mini",
@@ -213,7 +264,6 @@ Suggest Avatar Identity Model fields based on these traits.`
     } catch (apiError: any) {
       console.error(`[v0] OpenAI API error:`, apiError)
 
-      // Fall back to demo on API errors
       const demoResponse = generateDemoResponse(traits)
       return json({
         ...demoResponse,

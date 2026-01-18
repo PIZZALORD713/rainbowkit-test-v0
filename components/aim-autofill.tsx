@@ -100,13 +100,19 @@ export function AIMAutofill({ oraNumber, traits, imageUrl, onApply, disabled }: 
       } else {
         setIsDemoMode(false)
         setDemoMessage("")
+
+        toast({
+          title: "Analysis Complete",
+          description: "AI has analyzed your Ora's traits and generated suggestions",
+          variant: "default",
+        })
       }
 
       setDelta(aimDelta)
 
       const initialAccepted: Record<string, boolean> = {}
-      Object.keys(aimDelta.confidence).forEach((key) => {
-        initialAccepted[key] = true
+      Object.entries(aimDelta.confidence).forEach(([key, confidence]) => {
+        initialAccepted[key] = confidence > 0.7
       })
       setAccepted(initialAccepted)
     } catch (error) {
@@ -129,11 +135,13 @@ export function AIMAutofill({ oraNumber, traits, imageUrl, onApply, disabled }: 
       setAccepted({})
       setIsDemoMode(false)
       setDemoMessage("")
+
+      const acceptedCount = Object.values(accepted).filter(Boolean).length
       toast({
         title: "AIM Updated",
         description: isDemoMode
-          ? "Demo suggestions have been applied to your AIM file"
-          : "AI suggestions have been applied to your AIM file",
+          ? `${acceptedCount} demo suggestions applied to your AIM file`
+          : `${acceptedCount} AI suggestions applied to your AIM file`,
       })
     }
   }
@@ -155,10 +163,16 @@ export function AIMAutofill({ oraNumber, traits, imageUrl, onApply, disabled }: 
               {category}.{field}
             </span>
             <Badge
-              variant={confidence > 0.7 ? "default" : confidence > 0.4 ? "secondary" : "outline"}
-              className="text-xs"
+              variant={confidence > 0.7 ? "default" : confidence > 0.5 ? "secondary" : "outline"}
+              className={`text-xs ${
+                confidence > 0.7
+                  ? "bg-green-100 text-green-800"
+                  : confidence > 0.5
+                    ? "bg-yellow-100 text-yellow-800"
+                    : "bg-gray-100 text-gray-800"
+              }`}
             >
-              {Math.round(confidence * 100)}%
+              {Math.round(confidence * 100)}% confident
             </Badge>
           </div>
           <div className="text-sm text-slate-600">{Array.isArray(value) ? value.join(", ") : String(value)}</div>
