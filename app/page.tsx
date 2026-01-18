@@ -43,6 +43,7 @@ interface ApiResponse {
 }
 
 export default function SugartownOraDashboard() {
+  const [mounted, setMounted] = useState(false)
   const { address, isConnected } = useAccount()
   const { data: ensName } = useEnsName({ address })
   const [searchQuery, setSearchQuery] = useState("")
@@ -62,10 +63,14 @@ export default function SugartownOraDashboard() {
   const { getFilteredOras, toggleFavorite, isFavorite } = useFilterStore()
 
   useEffect(() => {
-    if (isConnected && address && !loading && oras.length === 0) {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (mounted && isConnected && address && !loading && oras.length === 0) {
       handleSearch(address)
     }
-  }, [isConnected, address])
+  }, [mounted, isConnected, address])
 
   const handleSearch = async (walletToSearch?: string) => {
     const targetWallet = walletToSearch || searchQuery.trim()
@@ -239,6 +244,14 @@ export default function SugartownOraDashboard() {
   }
 
   const filteredOras = getFilteredOras(oras)
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="animate-pulse text-gray-400">Loading...</div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">

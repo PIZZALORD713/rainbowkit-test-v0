@@ -2,8 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 
 import "./globals.css"
-
-import Providers from "./providers"
+import WalletProvider from "@/context/wallet"
 
 export const metadata: Metadata = {
   title: "OraKit",
@@ -15,7 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <head>
-        <link rel="stylesheet" href="https://unpkg.com/@rainbow-me/rainbowkit@2.2.8/dist/index.css" />
+        <link rel="stylesheet" href="https://unpkg.com/@rainbow-me/rainbowkit@2/dist/index.css" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -28,7 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
-        <Providers>{children}</Providers>
+        <WalletProvider>{children}</WalletProvider>
       </body>
     </html>
   )
