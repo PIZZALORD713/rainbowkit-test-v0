@@ -6,29 +6,17 @@ import { useRouter } from "next/navigation"
 import { Sparkles } from "lucide-react"
 import CustomConnectButton from "@/components/custom-connect-button"
 
-export default function LandingPage() {
-  const [mounted, setMounted] = useState(false)
+// Inner component that uses Wagmi hooks - only rendered after hydration
+function LandingContent() {
   const router = useRouter()
   const { isConnected } = useAccount()
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
   // Redirect to dashboard when wallet is connected
   useEffect(() => {
-    if (mounted && isConnected) {
+    if (isConnected) {
       router.push("/dashboard")
     }
-  }, [mounted, isConnected, router])
-
-  if (!mounted) {
-    return (
-      <main className="min-h-dvh grid place-items-center p-8 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900">
-        <div className="animate-pulse text-gray-400">Loading...</div>
-      </main>
-    )
-  }
+  }, [isConnected, router])
 
   return (
     <main className="min-h-dvh grid place-items-center p-8 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900">
@@ -67,4 +55,22 @@ export default function LandingPage() {
       </div>
     </main>
   )
+}
+
+export default function LandingPage() {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return (
+      <main className="min-h-dvh grid place-items-center p-8 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900">
+        <div className="animate-pulse text-gray-400">Loading...</div>
+      </main>
+    )
+  }
+
+  return <LandingContent />
 }
