@@ -10,8 +10,8 @@ export default function EnvCheck() {
         <pre className="rounded-lg border p-3 font-mono text-sm">
           {`NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: ${masked}`}
         </pre>
-        <a href="/wallet-entry" className="underline">
-          Go to /wallet-entry
+        <a href="/" className="underline">
+          Go to Landing Page
         </a>
       </div>
     </main>

@@ -105,8 +105,8 @@ export default function DiagnosticsPage() {
           <button onClick={run} className="rounded-md border px-3 py-2 text-sm hover:bg-black/5">
             Rescan
           </button>
-          <a href="/wallet-entry" className="rounded-md border px-3 py-2 text-sm hover:bg-black/5">
-            Open /wallet-entry
+          <a href="/" className="rounded-md border px-3 py-2 text-sm hover:bg-black/5">
+            Open Landing Page
           </a>
         </div>
       </div>
